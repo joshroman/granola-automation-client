@@ -16,7 +16,7 @@
     }
   },
   "webhook": {
-    "activeEnvironment": "test",
+    "activeEnvironment": "production",
     "secret": "your-webhook-signing-secret",
     "maxRetries": 3,
     "retryStrategy": "exponential",
