@@ -374,33 +374,36 @@ export class TranscriptClient extends GranolaClient {
     let content = " \n";  // Start with a blank line like the example
     
     let currentSpeaker: string | null = null;
-    let currentText: string[] = [];
+    let speakerSegments: string[] = [];
     
     for (const segment of transcript) {
       // If speaker changes or this is the first segment, write the accumulated text
       if (currentSpeaker !== null && currentSpeaker !== segment.speaker) {
         // Write the accumulated text for the previous speaker
         content += `${currentSpeaker}:  \n`;
-        for (const textLine of currentText) {
-          content += `${textLine || ''}  \n`;
-        }
-        content += "\n";  // Add a blank line between speaker sections
+        
+        // Join all segments from this speaker into a single paragraph
+        const consolidatedText = speakerSegments.join(' ').trim();
+        content += `${consolidatedText}  \n\n`;
         
         // Reset for the new speaker
-        currentText = [];
+        speakerSegments = [];
       }
       
       // Update current speaker and add this text
       currentSpeaker = segment.speaker;
-      currentText.push(segment.text || '');
+      
+      // Only add non-empty segments
+      if (segment.text?.trim()) {
+        speakerSegments.push(segment.text);
+      }
     }
     
     // Write the final speaker's text
-    if (currentSpeaker !== null && currentText.length) {
+    if (currentSpeaker !== null && speakerSegments.length) {
       content += `${currentSpeaker}:  \n`;
-      for (const textLine of currentText) {
-        content += `${textLine || ''}  \n`;
-      }
+      const consolidatedText = speakerSegments.join(' ').trim();
+      content += `${consolidatedText}  \n`;
     }
     
     // Write to the markdown file using Bun's native API

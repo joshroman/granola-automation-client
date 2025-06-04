@@ -1,5 +1,5 @@
 // examples/webhook-monitor.ts
-import { WebhookClient, WebhookConfig, OrganizationDetectorConfig } from '../src';
+import { WebhookClient, WebhookConfig, OrganizationDetectorConfig, OrganizationDetector } from '../src';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -158,7 +158,7 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
   client.setWebhookConfig(webhookConfig);
   
   // 9. Set the organization detector config
-  client.setOrganizationDetector(new WebhookClient.OrganizationDetector(orgConfig));
+  client.setOrganizationDetector(new OrganizationDetector(orgConfig));
   
   // 9. Set the Josh Template ID if configured
   if (config.joshTemplateId) {
