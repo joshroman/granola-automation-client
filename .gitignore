@@ -65,3 +65,7 @@ exports/
 n8n-processing-plan.md
 organization-config.json
 organization-config.*.json
+webhook-config.private.json
+**/processed-meetings.json
+data/
+*.private.*
