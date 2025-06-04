@@ -105,7 +105,7 @@ function loadOrInitializeState(stateFilePath: string, lookbackDays: number): {
 /**
  * Monitor for meetings and send them to configured webhook
  */
-async function monitorMeetings(configPath: string = './webhook-config.private.json'): Promise<void> {
+async function monitorMeetings(configPath: string = './webhook-config.private.json', specificMeetingId?: string): Promise<void> {
   console.log("Starting Granola meeting monitor for webhook integration");
   
   // 1. Load configuration
@@ -166,48 +166,78 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
   }
   
   try {
-    // 10. Process unprocessed meetings
-    console.log(`\nLooking for unprocessed meetings since ${new Date(state.lastCheckTimestamp).toLocaleString()}...`);
-    const lookbackDate = new Date(state.lastCheckTimestamp);
-    
-    // 11. Get unprocessed meetings
-    const results = await client.processUnprocessedMeetings(
-      lookbackDate,
-      processedIds,
-      config.monitoring.maxMeetingsPerRun
-    );
-    
-    // 12. Update state with results
-    if (results.length > 0) {
-      console.log(`\nProcessed ${results.length} meetings:`);
+    // If a specific meeting ID was provided, process just that one
+    if (specificMeetingId) {
+      console.log(`\nProcessing specific meeting with ID: ${specificMeetingId}`);
+      const result = await client.processMeeting(specificMeetingId);
+      console.log(`\nMeeting processed: ${result.success ? '✅ Success' : '❌ Failed'}`);
       
-      // Get documents to store titles
-      const docs = await client.getDocuments({ limit: 100 });
-      const docsMap = new Map();
-      if (docs.docs) {
-        for (const doc of docs.docs) {
-          docsMap.set(doc.document_id || doc.id, doc);
+      if (result.success) {
+        // Get documents to store titles
+        const docs = await client.getDocuments({ limit: 100 });
+        const docsMap = new Map();
+        if (docs.docs) {
+          for (const doc of docs.docs) {
+            docsMap.set(doc.document_id || doc.id, doc);
+          }
+        }
+        
+        const doc = docsMap.get(specificMeetingId);
+        
+        // Add to processed meetings if not already there
+        if (!processedIds.has(specificMeetingId)) {
+          state.processedMeetings.push({
+            id: specificMeetingId,
+            title: doc?.title || 'Unknown',
+            processed_at: new Date().toISOString(),
+            success: result.success
+          });
         }
       }
-      
-      // Add to processed meetings list
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i];
-        const documentId = Array.from(processedIds)[processedIds.size - results.length + i];
-        const doc = docsMap.get(documentId);
-        
-        console.log(`  ${i+1}. ${doc?.title || 'Unknown'} (${documentId}): ${result.success ? '✅ Success' : '❌ Failed'}`);
-        
-        // Add to processed meetings
-        state.processedMeetings.push({
-          id: documentId,
-          title: doc?.title || 'Unknown',
-          processed_at: new Date().toISOString(),
-          success: result.success
-        });
-      }
     } else {
-      console.log(`\nNo new meetings to process.`);
+      // 10. Process unprocessed meetings
+      console.log(`\nLooking for unprocessed meetings since ${new Date(state.lastCheckTimestamp).toLocaleString()}...`);
+      const lookbackDate = new Date(state.lastCheckTimestamp);
+      
+      // 11. Get unprocessed meetings
+      const results = await client.processUnprocessedMeetings(
+        lookbackDate,
+        processedIds,
+        config.monitoring.maxMeetingsPerRun
+      );
+      
+      // 12. Update state with results
+      if (results.length > 0) {
+        console.log(`\nProcessed ${results.length} meetings:`);
+        
+        // Get documents to store titles
+        const docs = await client.getDocuments({ limit: 100 });
+        const docsMap = new Map();
+        if (docs.docs) {
+          for (const doc of docs.docs) {
+            docsMap.set(doc.document_id || doc.id, doc);
+          }
+        }
+        
+        // Add to processed meetings list
+        for (let i = 0; i < results.length; i++) {
+          const result = results[i];
+          const documentId = Array.from(processedIds)[processedIds.size - results.length + i];
+          const doc = docsMap.get(documentId);
+          
+          console.log(`  ${i+1}. ${doc?.title || 'Unknown'} (${documentId}): ${result.success ? '✅ Success' : '❌ Failed'}`);
+          
+          // Add to processed meetings
+          state.processedMeetings.push({
+            id: documentId,
+            title: doc?.title || 'Unknown',
+            processed_at: new Date().toISOString(),
+            success: result.success
+          });
+        }
+      } else {
+        console.log(`\nNo new meetings to process.`);
+      }
     }
     
     // 13. Update timestamp
@@ -227,7 +257,7 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
 /**
  * Monitor for meetings and send them to configured webhook with specified environment
  */
-async function monitorMeetingsWithEnv(configPath: string = './webhook-config.private.json', environment?: string): Promise<void> {
+async function monitorMeetingsWithEnv(configPath: string = './webhook-config.private.json', environment?: string, meetingId?: string): Promise<void> {
   // Load config
   const config = loadConfig(configPath);
   
@@ -240,7 +270,7 @@ async function monitorMeetingsWithEnv(configPath: string = './webhook-config.pri
   }
   
   // Run the monitor with the specified or configured environment
-  await monitorMeetings(configPath);
+  await monitorMeetings(configPath, meetingId);
 }
 
 // Run if called directly
@@ -249,6 +279,7 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   let configPath = './webhook-config.private.json';
   let environment: string | undefined;
+  let meetingId: string | undefined;
   
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--config' || args[i] === '-c') {
@@ -257,6 +288,9 @@ if (require.main === module) {
     } else if (args[i] === '--env' || args[i] === '-e') {
       environment = args[i + 1];
       i++;
+    } else if (args[i] === '--meeting' || args[i] === '-m') {
+      meetingId = args[i + 1];
+      i++;
     } else if (args[i] === '--help' || args[i] === '-h') {
       console.log(`
 Usage: webhook-monitor.ts [options]
@@ -264,6 +298,7 @@ Usage: webhook-monitor.ts [options]
 Options:
   --config, -c <path>   Path to webhook configuration file (default: ./webhook-config.private.json)
   --env, -e <env>       Environment to use (test or production)
+  --meeting, -m <id>    Process a specific meeting by ID
   --help, -h            Show this help message
       `);
       process.exit(0);
@@ -273,7 +308,7 @@ Options:
     }
   }
   
-  monitorMeetingsWithEnv(configPath, environment)
+  monitorMeetingsWithEnv(configPath, environment, meetingId)
     .then(() => console.log('\nMonitoring complete.'))
     .catch(error => console.error('\nError running monitor:', error));
 }

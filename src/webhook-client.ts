@@ -436,18 +436,19 @@ export class WebhookClient extends PanelClient {
         };
       }
       
-      // 5. Get enhanced transcript
+      // 5. Get enhanced transcript and markdown format
       let enhancedTranscript: EnhancedTranscript | undefined;
+      let transcriptMarkdown: string | undefined;
+      
       if (this.webhookConfig.includeTranscript) {
         const transcriptWithSpeakers = 
           await this.transcriptClient.getDocumentTranscriptWithSpeakers(documentId);
         
         // Format transcript as markdown
-        const formattedMarkdown = await this.formatTranscriptMarkdown(transcriptWithSpeakers);
+        transcriptMarkdown = await this.formatTranscriptMarkdown(transcriptWithSpeakers);
         
         enhancedTranscript = {
-          segments: this.webhookConfig.includeTranscript ? transcriptWithSpeakers : undefined,
-          markdownContent: formattedMarkdown
+          segments: this.webhookConfig.includeTranscript ? transcriptWithSpeakers : undefined
         };
       }
       
@@ -455,6 +456,7 @@ export class WebhookClient extends PanelClient {
       const payload = await this.buildMeetingPayload(
         document,
         joshTemplateContent,
+        transcriptMarkdown,
         enhancedTranscript
       );
       
@@ -561,6 +563,7 @@ export class WebhookClient extends PanelClient {
    * Build complete meeting payload for webhook delivery.
    * @param document The document metadata
    * @param joshTemplateContent Optional Josh Template content
+   * @param transcriptMarkdown Optional formatted transcript markdown
    * @param enhancedTranscript Optional enhanced transcript
    * @returns Complete meeting payload
    * @private
@@ -568,6 +571,7 @@ export class WebhookClient extends PanelClient {
   private async buildMeetingPayload(
     document: Document, 
     joshTemplateContent?: JoshTemplateContent,
+    transcriptMarkdown?: string,
     enhancedTranscript?: EnhancedTranscript
   ): Promise<MeetingPayload> {
     // Extract participant information
@@ -627,6 +631,25 @@ export class WebhookClient extends PanelClient {
       }
     }
     
+    // Ensure JoshTemplate is always present with empty strings for missing values
+    const defaultJoshTemplate: JoshTemplateContent = {
+      introduction: "",
+      agendaItems: "",
+      keyDecisions: "",
+      actionItems: "",
+      meetingNarrative: "",
+      otherNotes: ""
+    };
+    
+    const normalizedJoshTemplate = joshTemplateContent ? {
+      introduction: joshTemplateContent.introduction || "",
+      agendaItems: joshTemplateContent.agendaItems || "",
+      keyDecisions: joshTemplateContent.keyDecisions || "",
+      actionItems: joshTemplateContent.actionItems || "",
+      meetingNarrative: joshTemplateContent.meetingNarrative || "",
+      otherNotes: joshTemplateContent.otherNotes || ""
+    } : defaultJoshTemplate;
+
     // Build the complete payload
     return {
       meetingId: document.document_id || document.id || '',
@@ -642,7 +665,8 @@ export class WebhookClient extends PanelClient {
           company: document.people.creator.details?.company?.name
         } : undefined
       },
-      joshTemplate: joshTemplateContent,
+      joshTemplate: normalizedJoshTemplate,
+      transcriptMarkdown: transcriptMarkdown || "",
       enhancedTranscript,
       processingTimestamp: new Date().toISOString()
     };

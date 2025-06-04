@@ -112,9 +112,6 @@ export interface JoshTemplateContent {
 export interface EnhancedTranscript {
   /** Original transcript segments with speaker identification */
   segments?: TranscriptSegmentWithSpeaker[];
-  
-  /** Formatted markdown transcript */
-  markdownContent?: string;
 }
 
 /**
@@ -156,6 +153,9 @@ export interface MeetingPayload {
   
   /** Josh Template content sections */
   joshTemplate?: JoshTemplateContent;
+  
+  /** Formatted transcript as markdown with speakers grouped */
+  transcriptMarkdown?: string;
   
   /** Enhanced transcript with speaker identification */
   enhancedTranscript?: EnhancedTranscript;

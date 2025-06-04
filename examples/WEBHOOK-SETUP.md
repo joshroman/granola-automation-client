@@ -193,8 +193,17 @@ The webhook sends this JSON structure to your endpoint:
     "meetingNarrative": "The full meeting summary...",
     "otherNotes": "Additional discussion points..."
   },
+  "transcriptMarkdown": "Me:  \nHello everyone. Welcome to the meeting. Let's get started with the agenda.  \n\nThem:  \nSounds good. I'm ready to discuss the project status.  \n",
   "enhancedTranscript": {
-    "markdownContent": "Me:\nHello everyone...\n\nThem:\nHi there..."
+    "segments": [
+      {
+        "text": "Hello everyone.",
+        "speaker": "Me",
+        "start_timestamp": "2025-06-03T15:20:00Z",
+        "end_timestamp": "2025-06-03T15:20:03Z"
+      },
+      // Additional segments...
+    ]
   },
   "processingTimestamp": "2025-06-03T16:45:00.000Z"
 }
