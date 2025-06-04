@@ -1,0 +1,37 @@
+{
+  "webhook": {
+    "url": "https://n8n.example.com/webhook/granola-meeting",
+    "headers": {
+      "X-Api-Key": "your-api-key-here",
+      "X-Source": "granola-ts-client"
+    },
+    "secret": "your-webhook-signing-secret",
+    "maxRetries": 3,
+    "retryStrategy": "exponential",
+    "retryDelay": 1000,
+    "includeTranscript": false
+  },
+  "monitoring": {
+    "lookbackDays": 3,
+    "maxMeetingsPerRun": 10,
+    "stateFilePath": "./processed-meetings.json"
+  },
+  "organizations": [
+    {
+      "name": "OMAI",
+      "titleKeywords": ["omai", "om ai", "team talk tuesday"],
+      "emailDomains": ["omaihq.com"],
+      "emailAddresses": ["josh@omaihq.com", "support@omaihq.com"],
+      "companyNames": ["OMAI", "Orthogonal Machine Artificial Intelligence"]
+    },
+    {
+      "name": "Mindshift",
+      "titleKeywords": ["mindshift", "meet this moment", "recovery"],
+      "emailDomains": ["mindshiftrecovery.org", "mindshiftrecovery.com"],
+      "emailAddresses": ["josh@mindshiftrecovery.org"],
+      "companyNames": ["Mindshift Recovery", "Mindshift"]
+    }
+  ],
+  "joshTemplateId": "b491d27c-1106-4ebf-97c5-d5129742945c",
+  "defaultOrganization": "Unknown"
+}

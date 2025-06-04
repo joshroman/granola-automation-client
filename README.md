@@ -170,6 +170,52 @@ Me:
 It's going great. I've made significant progress on the API integration.  
 ```
 
+### Webhook Integration
+
+The client includes a `WebhookClient` class for sending meeting data to external systems like n8n:
+
+```ts
+import { WebhookClient } from 'granola-ts-client';
+
+// Initialize the webhook client
+const client = new WebhookClient();
+
+// Configure the webhook endpoint
+client.setWebhookConfig({
+  url: 'https://n8n.example.com/webhook/granola',
+  headers: { 'X-Api-Key': 'your-api-key' },
+  includeTranscript: true,
+  maxRetries: 3,
+  retryStrategy: 'exponential',
+  retryDelay: 1000
+});
+
+// Process a specific meeting and send to webhook
+const result = await client.processMeeting('document-id');
+console.log(`Webhook delivery: ${result.success ? 'Success' : 'Failed'}`);
+
+// Process all unprocessed meetings since a date
+const processedIds = new Set(['already-processed-id-1', 'already-processed-id-2']);
+const results = await client.processUnprocessedMeetings(
+  new Date('2025-06-01'),  // Only process meetings after this date
+  processedIds,           // Skip already processed meetings
+  10                      // Process up to 10 meetings
+);
+```
+
+The webhook client sends detailed meeting information:
+
+1. **Meeting Metadata**: Title, date, participants, duration, organization
+2. **Josh Template Content**: Introduction, agenda, decisions, action items, etc.
+3. **Enhanced Transcript**: Speaker-identified transcript in text and markdown formats
+
+The client also provides:
+
+- **Retry Logic**: Configurable retry strategy for failed webhook deliveries
+- **Webhook Signing**: Optional HMAC signature for secure delivery
+- **Filtering**: Process only meetings you haven't processed before
+- **Organization Detection**: Automatically determine which organization a meeting belongs to
+
 ### Other APIs
 
 ```ts
@@ -237,6 +283,18 @@ import GranolaClient, {
   TranscriptClient,
   TranscriptSegmentWithSpeaker,
   
+  // Panel and organization types
+  PanelClient,
+  DocumentPanel,
+  OrganizationDetector,
+  OrganizationConfig,
+  
+  // Webhook integration types
+  WebhookClient,
+  WebhookConfig,
+  MeetingPayload,
+  WebhookResult,
+  
   // Generated OpenAPI schema types
   components,
   paths
@@ -249,6 +307,13 @@ const people: PeopleResponse = await client.getPeople();
 const transcriptClient = new TranscriptClient();
 const transcript: TranscriptSegmentWithSpeaker[] = 
   await transcriptClient.getDocumentTranscriptWithSpeakers('doc-id');
+
+// Use webhook client types
+const webhookClient = new WebhookClient();
+webhookClient.setWebhookConfig({
+  url: 'https://example.com/webhook'
+});
+const result: WebhookResult = await webhookClient.processMeeting('doc-id');
 
 // Use generated schema types
 type Document = components['schemas']['Document'];

@@ -61,3 +61,8 @@ temp/
 
 # Project specific
 exports/
+**/.claude/settings.local.json
+webhook-config.private.json
+**/processed-meetings.json
+data/
+*.private.*
