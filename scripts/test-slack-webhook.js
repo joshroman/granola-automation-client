@@ -26,7 +26,7 @@ const parsedUrl = url.parse(webhookUrl);
 
 // Create the message payload
 const message = {
-  text: `✅ *Granola Webhook Monitor Test*\n\nThis is a test message from the Granola webhook monitor.\n\nTimestamp: ${new Date().toISOString()}\nHostname: ${require('os').hostname()}`,
+  text: `✅ *GRANOLA PROCESSING TEST*\n\nThis is a test message from the Granola webhook monitor.\n\nTimestamp: ${new Date().toISOString()}\nHostname: ${require('os').hostname()}`,
 };
 
 // Convert the message to JSON

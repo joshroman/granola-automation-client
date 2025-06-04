@@ -341,8 +341,10 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
       
       // Send recovery notification if we had failures before
       if (prevFailures >= 3) {
-        const subject = `✅ Granola Webhook Monitor Recovered`;
+        const subject = `✅ GRANOLA PROCESSING RECOVERED`;
         const body = `
+*GRANOLA PROCESSING RECOVERED*
+
 Granola webhook monitor has recovered at ${new Date().toLocaleString()}
 
 Previous consecutive failures: ${prevFailures}
@@ -375,8 +377,10 @@ The monitor is now working properly again.
       
       if (shouldNotify) {
         // Send notification email
-        const subject = `⚠️ Granola Webhook Monitor Error (${state.failureTracking.consecutiveFailures} consecutive failures)`;
+        const subject = `⚠️ ERROR IN GRANOLA PROCESSING (${state.failureTracking.consecutiveFailures} consecutive failures)`;
         const body = `
+*ERROR IN GRANOLA PROCESSING*
+
 Granola webhook monitor encountered an error at ${new Date().toLocaleString()}
 
 Error: ${errorMessage}
@@ -403,8 +407,10 @@ Please check the logs for more details.
       }
     } else {
       // Send notification if failureTracking is not initialized
-      const subject = `⚠️ Granola Webhook Monitor Error`;
+      const subject = `⚠️ ERROR IN GRANOLA PROCESSING`;
       const body = `
+*ERROR IN GRANOLA PROCESSING*
+
 Granola webhook monitor encountered an error at ${new Date().toLocaleString()}
 
 Error: ${errorMessage}

@@ -64,8 +64,10 @@ function createTestMessage() {
   const timestamp = new Date().toLocaleString();
   const hostname = require('os').hostname();
   return {
-    subject: `✅ Granola Webhook Monitor Test (${timestamp})`,
+    subject: `✅ GRANOLA PROCESSING TEST (${timestamp})`,
     body: `
+*GRANOLA PROCESSING TEST*
+
 This is a test message from the Granola webhook monitor.
 
 Timestamp: ${timestamp}

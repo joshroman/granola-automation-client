@@ -63,8 +63,10 @@ echo "Sending test notification to: $SLACK_EMAIL"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 
 # Prepare email content
-SUBJECT="✅ Granola Webhook Monitor Test Notification"
+SUBJECT="✅ GRANOLA PROCESSING TEST NOTIFICATION"
 BODY="
+*GRANOLA PROCESSING TEST NOTIFICATION*
+
 This is a test notification from the Granola Webhook Monitor.
 
 Timestamp: $TIMESTAMP
