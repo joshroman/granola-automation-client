@@ -20,15 +20,30 @@ This guide explains how to set up the Granola webhook integration to send meetin
    nano webhook-config.private.json
    ```
 
-2. **Configure your webhook endpoint**:
+2. **Configure your test and production webhook endpoints**:
 
    ```json
    {
-     "webhook": {
-       "url": "https://your-n8n-instance.com/webhook/your-webhook-id",
-       "headers": {
-         "X-Api-Key": "your-webhook-auth-key"
+     "environments": {
+       "test": {
+         "url": "https://your-n8n-instance.com/webhook-test/your-test-webhook-id",
+         "headers": {
+           "X-Api-Key": "your-api-key-here",
+           "X-Source": "granola-ts-client",
+           "X-Environment": "test"
+         }
        },
+       "production": {
+         "url": "https://your-n8n-instance.com/webhook/your-prod-webhook-id",
+         "headers": {
+           "X-Api-Key": "your-api-key-here",
+           "X-Source": "granola-ts-client",
+           "X-Environment": "production"
+         }
+       }
+     },
+     "webhook": {
+       "activeEnvironment": "test",  // Which environment to use by default
        "secret": "your-signing-secret",
        "maxRetries": 3,
        "retryStrategy": "exponential",
@@ -69,7 +84,16 @@ node examples/webhook-monitor.js
 bun examples/webhook-monitor.ts
 
 # With a custom config path
-bun examples/webhook-monitor.ts ./path/to/config.json
+bun examples/webhook-monitor.ts --config ./path/to/config.json
+
+# Specify environment to use
+bun examples/webhook-monitor.ts --env production
+
+# Combine options
+bun examples/webhook-monitor.ts --config ./path/to/config.json --env production
+
+# View all options
+bun examples/webhook-monitor.ts --help
 ```
 
 ### Scheduled Execution

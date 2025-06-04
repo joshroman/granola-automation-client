@@ -4,10 +4,25 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
+ * Environment configuration
+ */
+interface EnvironmentConfig {
+  url: string;
+  headers: Record<string, string>;
+}
+
+/**
  * Configuration loader for webhook monitoring
  */
 interface WebhookMonitorConfig {
-  webhook: WebhookConfig;
+  environments: {
+    test: EnvironmentConfig;
+    production: EnvironmentConfig;
+    [key: string]: EnvironmentConfig;
+  };
+  webhook: Omit<WebhookConfig, 'url' | 'headers'> & {
+    activeEnvironment: string;
+  };
   monitoring: {
     lookbackDays: number;
     maxMeetingsPerRun: number;
@@ -123,10 +138,26 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
   console.log("Initializing WebhookClient...");
   const client = new WebhookClient();
   
-  // 7. Configure webhook
-  client.setWebhookConfig(config.webhook);
+  // 7. Get active environment
+  const activeEnv = config.webhook.activeEnvironment || 'test';
+  const environment = config.environments[activeEnv];
   
-  // 8. Set the organization detector config
+  if (!environment) {
+    throw new Error(`Environment '${activeEnv}' not found in configuration`);
+  }
+  
+  console.log(`Using environment: ${activeEnv}`);
+  
+  // 8. Configure webhook with the active environment
+  const webhookConfig: WebhookConfig = {
+    ...config.webhook,
+    url: environment.url,
+    headers: environment.headers
+  };
+  
+  client.setWebhookConfig(webhookConfig);
+  
+  // 9. Set the organization detector config
   client.setOrganizationDetector(new WebhookClient.OrganizationDetector(orgConfig));
   
   // 9. Set the Josh Template ID if configured
@@ -193,12 +224,58 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
   }
 }
 
+/**
+ * Monitor for meetings and send them to configured webhook with specified environment
+ */
+async function monitorMeetingsWithEnv(configPath: string = './webhook-config.private.json', environment?: string): Promise<void> {
+  // Load config
+  const config = loadConfig(configPath);
+  
+  // Override environment if specified
+  if (environment) {
+    if (!config.environments[environment]) {
+      throw new Error(`Environment '${environment}' not found in configuration`);
+    }
+    config.webhook.activeEnvironment = environment;
+  }
+  
+  // Run the monitor with the specified or configured environment
+  await monitorMeetings(configPath);
+}
+
 // Run if called directly
 if (require.main === module) {
-  const configPath = process.argv[2] || './webhook-config.private.json';
-  monitorMeetings(configPath)
+  // Parse command line arguments
+  const args = process.argv.slice(2);
+  let configPath = './webhook-config.private.json';
+  let environment: string | undefined;
+  
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--config' || args[i] === '-c') {
+      configPath = args[i + 1];
+      i++;
+    } else if (args[i] === '--env' || args[i] === '-e') {
+      environment = args[i + 1];
+      i++;
+    } else if (args[i] === '--help' || args[i] === '-h') {
+      console.log(`
+Usage: webhook-monitor.ts [options]
+
+Options:
+  --config, -c <path>   Path to webhook configuration file (default: ./webhook-config.private.json)
+  --env, -e <env>       Environment to use (test or production)
+  --help, -h            Show this help message
+      `);
+      process.exit(0);
+    } else if (!args[i].startsWith('-') && i === 0) {
+      // For backward compatibility, assume first non-flag arg is config path
+      configPath = args[i];
+    }
+  }
+  
+  monitorMeetingsWithEnv(configPath, environment)
     .then(() => console.log('\nMonitoring complete.'))
     .catch(error => console.error('\nError running monitor:', error));
 }
 
-export { monitorMeetings };
+export { monitorMeetings, monitorMeetingsWithEnv };

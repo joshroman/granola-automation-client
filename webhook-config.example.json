@@ -1,10 +1,22 @@
 {
-  "webhook": {
-    "url": "https://n8n.example.com/webhook/granola-meeting",
-    "headers": {
-      "X-Api-Key": "your-api-key-here",
-      "X-Source": "granola-ts-client"
+  "environments": {
+    "test": {
+      "url": "https://your-n8n-instance.com/webhook-test/your-webhook-id",
+      "headers": {
+        "X-Api-Key": "your-api-key-here",
+        "X-Source": "granola-ts-client"
+      }
     },
+    "production": {
+      "url": "https://your-n8n-instance.com/webhook/your-webhook-id",
+      "headers": {
+        "X-Api-Key": "your-api-key-here",
+        "X-Source": "granola-ts-client"
+      }
+    }
+  },
+  "webhook": {
+    "activeEnvironment": "test",
     "secret": "your-webhook-signing-secret",
     "maxRetries": 3,
     "retryStrategy": "exponential",
