@@ -2,6 +2,7 @@
 import { WebhookClient, WebhookConfig, OrganizationDetectorConfig, OrganizationDetector } from '../src';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
 
 /**
  * Environment configuration
@@ -70,6 +71,38 @@ function ensureStateDirectory(stateFilePath: string): void {
 }
 
 /**
+ * Send notification email to Slack channel
+ * @param subject Email subject
+ * @param body Email body
+ */
+async function sendSlackNotification(subject: string, body: string): Promise<void> {
+  // Default to the specified Slack email if not provided via environment
+  const slackEmail = process.env.SLACK_EMAIL || 'aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com';
+  
+  try {
+    // Prepare email command - escape quotes in subject and body
+    const escapedSubject = subject.replace(/"/g, '\\"');
+    const escapedBody = body.replace(/"/g, '\\"').replace(/`/g, '\\`');
+    const emailCommand = `echo "${escapedBody}" | mail -s "${escapedSubject}" ${slackEmail}`;
+    
+    // Execute the command
+    exec(emailCommand, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error sending notification email: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        console.error(`Email stderr: ${stderr}`);
+        return;
+      }
+      console.log(`Notification email sent to Slack channel (${slackEmail})`);
+    });
+  } catch (error) {
+    console.error(`Failed to send notification email:`, error);
+  }
+}
+
+/**
  * Load or initialize state file
  */
 function loadOrInitializeState(stateFilePath: string, lookbackDays: number): {
@@ -80,6 +113,11 @@ function loadOrInitializeState(stateFilePath: string, lookbackDays: number): {
     processed_at: string;
     success: boolean;
   }>;
+  failureTracking?: {
+    consecutiveFailures: number;
+    lastNotificationTime: string | null;
+    lastSuccessTime: string;
+  };
 } {
   try {
     if (fs.existsSync(stateFilePath)) {
@@ -89,7 +127,12 @@ function loadOrInitializeState(stateFilePath: string, lookbackDays: number): {
       // Initialize with lookback date
       return {
         lastCheckTimestamp: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000).toISOString(),
-        processedMeetings: []
+        processedMeetings: [],
+        failureTracking: {
+          consecutiveFailures: 0,
+          lastNotificationTime: null,
+          lastSuccessTime: new Date().toISOString()
+        }
       };
     }
   } catch (error) {
@@ -97,7 +140,12 @@ function loadOrInitializeState(stateFilePath: string, lookbackDays: number): {
     // Return fresh state
     return {
       lastCheckTimestamp: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000).toISOString(),
-      processedMeetings: []
+      processedMeetings: [],
+      failureTracking: {
+        consecutiveFailures: 0,
+        lastNotificationTime: null,
+        lastSuccessTime: new Date().toISOString()
+      }
     };
   }
 }
@@ -124,6 +172,15 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
   );
   console.log(`Monitoring meetings since: ${state.lastCheckTimestamp}`);
   console.log(`Previously processed ${state.processedMeetings.length} meetings`);
+  
+  // Initialize failure tracking if not present
+  if (!state.failureTracking) {
+    state.failureTracking = {
+      consecutiveFailures: 0,
+      lastNotificationTime: null,
+      lastSuccessTime: new Date().toISOString()
+    };
+  }
   
   // 4. Create a set of processed IDs
   const processedIds = new Set(state.processedMeetings.map(m => m.id));
@@ -240,8 +297,30 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
       }
     }
     
-    // 13. Update timestamp
+    // 13. Update timestamp and reset failure tracking on success
     state.lastCheckTimestamp = new Date().toISOString();
+    
+    // Record success and reset failure counter
+    if (state.failureTracking) {
+      const prevFailures = state.failureTracking.consecutiveFailures;
+      state.failureTracking.consecutiveFailures = 0;
+      state.failureTracking.lastSuccessTime = new Date().toISOString();
+      
+      // Send recovery notification if we had failures before
+      if (prevFailures >= 3) {
+        const subject = `✅ Granola Webhook Monitor Recovered`;
+        const body = `
+Granola webhook monitor has recovered at ${new Date().toLocaleString()}
+
+Previous consecutive failures: ${prevFailures}
+Environment: ${config.webhook.activeEnvironment}
+Configuration: ${configPath}
+
+The monitor is now working properly again.
+`;
+        await sendSlackNotification(subject, body);
+      }
+    }
     
     // 14. Save state
     fs.writeFileSync(config.monitoring.stateFilePath, JSON.stringify(state, null, 2));
@@ -249,7 +328,64 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
     console.log(`Next run will check for meetings after ${state.lastCheckTimestamp}`);
     
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`Error monitoring meetings:`, error);
+    
+    // Increment failure counter
+    if (state.failureTracking) {
+      state.failureTracking.consecutiveFailures++;
+      
+      // Only send notification every 3 failures or if this is the first failure
+      const shouldNotify = 
+        state.failureTracking.consecutiveFailures === 1 || 
+        state.failureTracking.consecutiveFailures % 3 === 0;
+      
+      if (shouldNotify) {
+        // Send notification email
+        const subject = `⚠️ Granola Webhook Monitor Error (${state.failureTracking.consecutiveFailures} consecutive failures)`;
+        const body = `
+Granola webhook monitor encountered an error at ${new Date().toLocaleString()}
+
+Error: ${errorMessage}
+
+Environment: ${config.webhook.activeEnvironment}
+Configuration: ${configPath}
+Consecutive failures: ${state.failureTracking.consecutiveFailures}
+Last success: ${state.failureTracking.lastSuccessTime}
+
+This could indicate that the Granola API has changed, or there are network/authentication issues.
+Please check the logs for more details.
+`;
+        
+        await sendSlackNotification(subject, body);
+        state.failureTracking.lastNotificationTime = new Date().toISOString();
+      }
+      
+      // Save the updated state even on failure
+      try {
+        fs.writeFileSync(config.monitoring.stateFilePath, JSON.stringify(state, null, 2));
+        console.log(`Failure state saved to ${config.monitoring.stateFilePath}`);
+      } catch (stateError) {
+        console.error(`Could not save failure state:`, stateError);
+      }
+    } else {
+      // Send notification if failureTracking is not initialized
+      const subject = `⚠️ Granola Webhook Monitor Error`;
+      const body = `
+Granola webhook monitor encountered an error at ${new Date().toLocaleString()}
+
+Error: ${errorMessage}
+
+Environment: ${config.webhook.activeEnvironment}
+Configuration: ${configPath}
+
+This could indicate that the Granola API has changed, or there are network/authentication issues.
+Please check the logs for more details.
+`;
+      
+      await sendSlackNotification(subject, body);
+    }
+    
     process.exit(1);
   }
 }

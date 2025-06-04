@@ -83,6 +83,24 @@ For long-running systems, you may want to set up log rotation to prevent the log
 - The script logs when it starts, what meetings it processed, and when it finishes
 - For each meeting, it logs whether the webhook delivery was successful
 - All processed meetings are tracked in `data/processed-meetings.json`
+- Slack notifications are sent automatically when errors occur
+  - First failure and every third consecutive failure will trigger a notification
+  - Recovery notifications are sent after 3+ failures when the system returns to normal
+  - Failure tracking is persistent across runs via the state file
+
+### Configuring Slack Notifications
+
+By default, notifications are sent to the Slack channel email:
+`aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com`
+
+You can customize this by:
+
+1. Setting the `SLACK_EMAIL` environment variable before running the script
+2. Using the `--slack-email` parameter with the cron script:
+   ```bash
+   ./scripts/granola-webhook-cron.sh --slack-email your-channel@slack.com
+   ```
+3. Editing the default in the script directly
 
 ## Manual Run
 

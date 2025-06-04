@@ -6,7 +6,12 @@
 # process new meetings and send them to n8n.
 #
 # Usage:
-#   ./granola-webhook-cron.sh [--config /path/to/config.json] [--env production|test]
+#   ./granola-webhook-cron.sh [--config /path/to/config.json] [--env production|test] [--slack-email your-channel@slack.com]
+#
+# Options:
+#   --config /path/to/config.json    Path to webhook configuration file (default: ./webhook-config.private.json)
+#   --env production|test            Environment to use (default: production)
+#   --slack-email email@example.com  Email address for Slack notifications (default: aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com)
 #
 # To set up as a cron job, add a line like this to your crontab (edit with 'crontab -e'):
 #   */30 * * * * cd /path/to/granola-ts-client && ./scripts/granola-webhook-cron.sh >> ./logs/webhook-cron.log 2>&1
@@ -25,15 +30,20 @@ cd "$PROJECT_DIR" || exit 1
 # Parse arguments
 CONFIG_PATH="./webhook-config.private.json"
 ENVIRONMENT="production"  # Default to production
+SLACK_EMAIL="aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com"  # Default Slack email
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --config) CONFIG_PATH="$2"; shift ;;
         --env) ENVIRONMENT="$2"; shift ;;
+        --slack-email) SLACK_EMAIL="$2"; shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
     shift
 done
+
+# Export Slack email for webhook monitor
+export SLACK_EMAIL="${SLACK_EMAIL}"
 
 # Create logs directory if it doesn't exist
 if [ ! -d "./logs" ]; then
