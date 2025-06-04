@@ -650,11 +650,26 @@ export class WebhookClient extends PanelClient {
       otherNotes: joshTemplateContent.otherNotes || ""
     } : defaultJoshTemplate;
 
+    // Ensure meetingDate is properly formatted and uses the original date from the document
+    let meetingDate = new Date().toISOString();
+    if (document.created_at) {
+      try {
+        // Parse the meeting date from the document's created_at
+        const createdDate = new Date(document.created_at);
+        // Check if it's a valid date
+        if (!isNaN(createdDate.getTime())) {
+          meetingDate = createdDate.toISOString();
+        }
+      } catch (e) {
+        console.error(`Error parsing meeting date: ${e}`);
+      }
+    }
+
     // Build the complete payload
     return {
       meetingId: document.document_id || document.id || '',
       meetingTitle: document.title || 'Untitled Meeting',
-      meetingDate: document.created_at || new Date().toISOString(),
+      meetingDate: meetingDate,
       metadata: {
         participants,
         duration,
