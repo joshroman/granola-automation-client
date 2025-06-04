@@ -2,6 +2,13 @@
 
 A TypeScript client for the Granola API. This client allows you to interact with Granola's note-taking and meeting management platform programmatically while automatically mimicking the official Granola desktop application to bypass "Unsupported client" validation.
 
+The client provides powerful capabilities for working with Granola meeting data:
+
+- **Enhanced Transcript Processing**: Extract transcripts with automatic speaker identification and improved formatting
+- **AI Meeting Summaries**: Access AI-generated meeting summaries and structured panel content
+- **Webhook Integration**: Send meeting data to automation platforms like n8n for custom workflows
+- **Organization Detection**: Automatically identify which organization a meeting belongs to based on context clues
+
 ## Installation
 
 ```bash
