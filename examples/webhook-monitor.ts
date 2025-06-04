@@ -262,25 +262,63 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
       const result = await client.processMeeting(specificMeetingId);
       console.log(`\nMeeting processed: ${result.success ? '✅ Success' : '❌ Failed'}`);
       
-      if (result.success) {
-        // Get documents to store titles
-        const docs = await client.getDocuments({ limit: 100 });
-        const docsMap = new Map();
-        if (docs.docs) {
-          for (const doc of docs.docs) {
-            docsMap.set(doc.document_id || doc.id, doc);
-          }
+      // Get documents to store titles
+      const docs = await client.getDocuments({ limit: 100 });
+      const docsMap = new Map();
+      if (docs.docs) {
+        for (const doc of docs.docs) {
+          docsMap.set(doc.document_id || doc.id, doc);
         }
-        
-        const doc = docsMap.get(specificMeetingId);
+      }
+      
+      const doc = docsMap.get(specificMeetingId);
+      const meetingTitle = doc?.title || 'Unknown';
+      
+      // Send notification based on result
+      if (result.success) {
+        // Success notification
+        const successSubject = `✅ Success: processed "${meetingTitle}"`;
+        const successBody = `
+Successfully processed meeting:
+- Title: ${meetingTitle}
+- ID: ${specificMeetingId}
+- Time: ${new Date().toLocaleString()}
+- Environment: ${config.webhook.activeEnvironment}
+`;
+        await sendSlackNotification(successSubject, successBody);
         
         // Add to processed meetings if not already there
         if (!processedIds.has(specificMeetingId)) {
           state.processedMeetings.push({
             id: specificMeetingId,
-            title: doc?.title || 'Unknown',
+            title: meetingTitle,
             processed_at: new Date().toISOString(),
-            success: result.success
+            success: true
+          });
+        }
+      } else {
+        // Failure notification
+        const failureSubject = `🔴 ERROR: Failed to process "${meetingTitle}"`;
+        const failureBody = `
+*MEETING PROCESSING ERROR*
+
+Failed to process meeting:
+- Title: ${meetingTitle}
+- ID: ${specificMeetingId}
+- Time: ${new Date().toLocaleString()}
+- Environment: ${config.webhook.activeEnvironment}
+
+Please check the logs for detailed error information.
+`;
+        await sendSlackNotification(failureSubject, failureBody);
+        
+        // Still add to processed meetings to track the failure
+        if (!processedIds.has(specificMeetingId)) {
+          state.processedMeetings.push({
+            id: specificMeetingId,
+            title: meetingTitle,
+            processed_at: new Date().toISOString(),
+            success: false
           });
         }
       }
@@ -315,14 +353,44 @@ async function monitorMeetings(configPath: string = './webhook-config.private.js
           const documentId = Array.from(processedIds)[processedIds.size - results.length + i];
           const doc = docsMap.get(documentId);
           
-          console.log(`  ${i+1}. ${doc?.title || 'Unknown'} (${documentId}): ${result.success ? '✅ Success' : '❌ Failed'}`);
+          const meetingTitle = doc?.title || 'Unknown';
+          const success = result.success;
+          console.log(`  ${i+1}. ${meetingTitle} (${documentId}): ${success ? '✅ Success' : '❌ Failed'}`);
+          
+          // Send success notification for each processed meeting
+          if (success) {
+            const successSubject = `✅ Success: processed "${meetingTitle}"`;
+            const successBody = `
+Successfully processed meeting:
+- Title: ${meetingTitle}
+- ID: ${documentId}
+- Time: ${new Date().toLocaleString()}
+- Environment: ${config.webhook.activeEnvironment}
+`;
+            await sendSlackNotification(successSubject, successBody);
+          } else {
+            // Send failure notification for this specific meeting
+            const failureSubject = `🔴 ERROR: Failed to process "${meetingTitle}"`;
+            const failureBody = `
+*MEETING PROCESSING ERROR*
+
+Failed to process meeting:
+- Title: ${meetingTitle}
+- ID: ${documentId}
+- Time: ${new Date().toLocaleString()}
+- Environment: ${config.webhook.activeEnvironment}
+
+Please check the logs for detailed error information.
+`;
+            await sendSlackNotification(failureSubject, failureBody);
+          }
           
           // Add to processed meetings
           state.processedMeetings.push({
             id: documentId,
-            title: doc?.title || 'Unknown',
+            title: meetingTitle,
             processed_at: new Date().toISOString(),
-            success: result.success
+            success: success
           });
         }
       } else {
@@ -377,7 +445,7 @@ The monitor is now working properly again.
       
       if (shouldNotify) {
         // Send notification email
-        const subject = `⚠️ ERROR IN GRANOLA PROCESSING (${state.failureTracking.consecutiveFailures} consecutive failures)`;
+        const subject = `🔴 ERROR IN GRANOLA PROCESSING (${state.failureTracking.consecutiveFailures} consecutive failures)`;
         const body = `
 *ERROR IN GRANOLA PROCESSING*
 
@@ -407,7 +475,7 @@ Please check the logs for more details.
       }
     } else {
       // Send notification if failureTracking is not initialized
-      const subject = `⚠️ ERROR IN GRANOLA PROCESSING`;
+      const subject = `🔴 ERROR IN GRANOLA PROCESSING`;
       const body = `
 *ERROR IN GRANOLA PROCESSING*
 
