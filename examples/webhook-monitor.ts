@@ -71,41 +71,67 @@ function ensureStateDirectory(stateFilePath: string): void {
 }
 
 /**
- * Send notification email to Slack channel
- * @param subject Email subject
- * @param body Email body
+ * Send notification to Slack channel via webhook or email
+ * @param subject Notification subject/title
+ * @param body Notification body/message
  */
 async function sendSlackNotification(subject: string, body: string): Promise<void> {
-  // Use the Slack email from environment variables
-  const slackEmail = process.env.SLACK_EMAIL;
-  
-  // Check if email is configured
-  if (!slackEmail) {
-    console.error('SLACK_EMAIL environment variable not set. Notifications disabled.');
-    console.error('Set this variable to receive notifications in Slack.');
-    return;
+  // Try webhook first if configured (preferred method)
+  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+  if (webhookUrl) {
+    try {
+      // Create payload with formatted message
+      const payload = {
+        text: `*${subject}*\n\n${body}`
+      };
+      
+      // Send to webhook
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (response.ok) {
+        console.log('Slack notification sent via webhook');
+        return;
+      } else {
+        console.error(`Webhook error: ${response.status} ${response.statusText}`);
+        // Fall back to email if webhook fails
+      }
+    } catch (error) {
+      console.error('Failed to send webhook notification:', error);
+      // Fall back to email if webhook fails
+    }
   }
   
-  try {
-    // Prepare email command - escape quotes in subject and body
-    const escapedSubject = subject.replace(/"/g, '\\"');
-    const escapedBody = body.replace(/"/g, '\\"').replace(/`/g, '\\`');
-    const emailCommand = `echo "${escapedBody}" | mail -s "${escapedSubject}" ${slackEmail}`;
-    
-    // Execute the command
-    exec(emailCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Error sending notification email: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        console.error(`Email stderr: ${stderr}`);
-        return;
-      }
-      console.log(`Notification email sent to Slack channel (${slackEmail})`);
-    });
-  } catch (error) {
-    console.error(`Failed to send notification email:`, error);
+  // Fall back to email if webhook is not configured or failed
+  const slackEmail = process.env.SLACK_EMAIL;
+  if (slackEmail) {
+    try {
+      // Prepare email command - escape quotes in subject and body
+      const escapedSubject = subject.replace(/"/g, '\\"');
+      const escapedBody = body.replace(/"/g, '\\"').replace(/`/g, '\\`');
+      const emailCommand = `echo "${escapedBody}" | mail -s "${escapedSubject}" ${slackEmail}`;
+      
+      // Execute the command
+      exec(emailCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Error sending notification email: ${error.message}`);
+          return;
+        }
+        if (stderr) {
+          console.error(`Email stderr: ${stderr}`);
+          return;
+        }
+        console.log(`Notification email sent to Slack channel (${slackEmail})`);
+      });
+    } catch (error) {
+      console.error(`Failed to send notification email:`, error);
+    }
+  } else if (!webhookUrl) {
+    // No notification methods configured
+    console.error('No Slack notification methods configured. Set SLACK_WEBHOOK_URL or SLACK_EMAIL in .env');
   }
 }
 

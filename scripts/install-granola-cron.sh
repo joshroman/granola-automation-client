@@ -9,9 +9,10 @@
 # - 6:45 PM
 #
 # Usage:
-#   ./install-granola-cron.sh [--slack-email your-channel@slack.com] [--config /path/to/config.json] [--env production|test]
+#   ./install-granola-cron.sh [--slack-webhook webhook_url] [--slack-email email@example.com] [--config /path/to/config.json] [--env production|test]
 #
 # Options:
+#   --slack-webhook webhook_url      Slack webhook URL for notifications (preferred over email)
 #   --slack-email email@example.com  Email address for Slack notifications
 #   --config /path/to/config.json    Path to webhook configuration file
 #   --env production|test            Environment to use (default: production)
@@ -26,6 +27,7 @@ PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 CONFIG_PARAM=""
 ENV_PARAM=""
 SLACK_EMAIL_PARAM=""
+SLACK_WEBHOOK_PARAM=""
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -39,6 +41,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --slack-email)
             SLACK_EMAIL_PARAM="--slack-email $2"
+            shift
+            ;;
+        --slack-webhook)
+            SLACK_WEBHOOK_PARAM="--slack-webhook $2"
             shift
             ;;
         *)
@@ -85,6 +91,10 @@ fi
 
 if [ -n "$SLACK_EMAIL_PARAM" ]; then
     CRON_COMMAND="$CRON_COMMAND $SLACK_EMAIL_PARAM"
+fi
+
+if [ -n "$SLACK_WEBHOOK_PARAM" ]; then
+    CRON_COMMAND="$CRON_COMMAND $SLACK_WEBHOOK_PARAM"
 fi
 
 CRON_COMMAND="$CRON_COMMAND >> ./logs/webhook-cron.log 2>&1"

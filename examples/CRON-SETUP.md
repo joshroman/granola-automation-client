@@ -90,36 +90,59 @@ For long-running systems, you may want to set up log rotation to prevent the log
 
 ### Configuring Slack Notifications
 
-Slack notifications require configuring the `SLACK_EMAIL` environment variable. This is the email address of your Slack channel that can receive email notifications.
+The webhook monitor supports two methods for sending notifications to Slack:
 
-To set up Slack notifications:
+#### Method 1: Slack Webhook (Recommended)
+
+Using a Slack webhook is the most reliable method:
 
 1. Copy the `.env.example` file to `.env` in the project root:
    ```bash
    cp .env.example .env
    ```
 
-2. Edit the `.env` file to set your Slack channel email:
+2. Edit the `.env` file to set your Slack webhook URL:
+   ```
+   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+   ```
+
+3. To create a Slack webhook URL:
+   - Go to your Slack workspace settings
+   - Navigate to **Apps & integrations**
+   - Search for "Incoming WebHooks" and add it
+   - Choose the channel for notifications
+   - Copy the webhook URL provided
+
+4. The cron script will automatically load this environment variable.
+
+Alternative methods for setting the webhook URL:
+
+1. Set the environment variable directly:
+   ```bash
+   export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+   ./scripts/granola-webhook-cron.sh
+   ```
+
+2. Use the `--slack-webhook` parameter:
+   ```bash
+   ./scripts/granola-webhook-cron.sh --slack-webhook https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+   ```
+
+#### Method 2: Email to Slack (Fallback)
+
+If you prefer using the email method (less reliable but simpler setup):
+
+1. Set the `SLACK_EMAIL` environment variable in your `.env` file:
    ```
    SLACK_EMAIL=your-slack-channel@slack.com
    ```
 
-3. The cron script will automatically load this environment variable.
-
-Alternative methods (if you prefer not to use the .env file):
-
-1. Set the `SLACK_EMAIL` environment variable before running the script:
-   ```bash
-   export SLACK_EMAIL=your-channel@slack.com
-   ./scripts/granola-webhook-cron.sh
-   ```
-
-2. Use the `--slack-email` parameter with the cron script:
+2. Or use the `--slack-email` parameter:
    ```bash
    ./scripts/granola-webhook-cron.sh --slack-email your-channel@slack.com
    ```
 
-**Note**: The `.env` file is ignored by git to prevent committing sensitive information.
+**Note**: The webhook method is preferred as it's more reliable and doesn't depend on your system's mail configuration. The `.env` file is ignored by git to prevent committing sensitive information.
 
 ## Manual Run
 
