@@ -494,7 +494,7 @@ export class WebhookClient extends PanelClient {
           id: documentId,
           document_id: documentId,
           title: metadata.title || "",
-          created_at: new Date().toISOString(), // Fallback
+          created_at: metadata.created_at || new Date().toISOString(), // Use metadata date when available
           creator_id: metadata.creator?.id || "",
           people: {
             creator: metadata.creator,
@@ -654,11 +654,18 @@ export class WebhookClient extends PanelClient {
     let meetingDate = new Date().toISOString();
     if (document.created_at) {
       try {
+        // Log the raw date from document for debugging
+        console.log(`Raw document created_at: ${document.created_at}`);
+        
         // Parse the meeting date from the document's created_at
         const createdDate = new Date(document.created_at);
+        
         // Check if it's a valid date
         if (!isNaN(createdDate.getTime())) {
-          meetingDate = createdDate.toISOString();
+          meetingDate = document.created_at; // Use the original string to avoid timezone issues
+          console.log(`Using meeting date: ${meetingDate}`);
+        } else {
+          console.warn(`Invalid date detected: ${document.created_at}, using current time instead`);
         }
       } catch (e) {
         console.error(`Error parsing meeting date: ${e}`);
