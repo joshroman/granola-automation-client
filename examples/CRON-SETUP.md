@@ -2,9 +2,23 @@
 
 This guide explains how to set up automated monitoring of Granola meetings to send data to your n8n webhook.
 
-## Cron Job Setup
+## Quick Setup with Installer
 
-The `scripts/granola-webhook-cron.sh` script is designed to be run regularly via cron to monitor for new meetings and send them to your n8n webhook.
+We've created an installer script that automatically sets up a cron job to run the webhook monitor at 9:45 AM, 12:45 PM, 3:45 PM, and 6:45 PM daily:
+
+```bash
+./scripts/install-granola-cron.sh
+```
+
+This will:
+1. Create the logs directory if it doesn't exist
+2. Make the webhook cron script executable
+3. Install the cron job with the correct timing
+4. Verify the installation
+
+## Manual Cron Job Setup
+
+If you prefer to set up the cron job manually or need a custom schedule, the `scripts/granola-webhook-cron.sh` script is designed to be run regularly via cron to monitor for new meetings and send them to your n8n webhook.
 
 ### Prerequisites
 
@@ -14,7 +28,7 @@ The `scripts/granola-webhook-cron.sh` script is designed to be run regularly via
    chmod +x scripts/granola-webhook-cron.sh
    ```
 
-### Setting Up the Cron Job (macOS/Linux)
+### Setting Up the Cron Job Manually (macOS/Linux)
 
 1. Open your crontab for editing:
    ```bash
@@ -26,9 +40,9 @@ The `scripts/granola-webhook-cron.sh` script is designed to be run regularly via
    */30 * * * * cd /path/to/granola-ts-client && ./scripts/granola-webhook-cron.sh >> ./logs/webhook-cron.log 2>&1
    ```
 
-   Or to run once per day at 8am:
+   Or to run at specific times (e.g., 9:45 AM, 12:45 PM, 3:45 PM, and 6:45 PM):
    ```bash
-   0 8 * * * cd /path/to/granola-ts-client && ./scripts/granola-webhook-cron.sh >> ./logs/webhook-cron.log 2>&1
+   45 9,12,15,18 * * * cd /path/to/granola-ts-client && ./scripts/granola-webhook-cron.sh >> ./logs/webhook-cron.log 2>&1
    ```
 
 3. Save and exit the editor.
