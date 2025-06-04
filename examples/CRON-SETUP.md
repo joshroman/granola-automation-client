@@ -90,17 +90,36 @@ For long-running systems, you may want to set up log rotation to prevent the log
 
 ### Configuring Slack Notifications
 
-By default, notifications are sent to the Slack channel email:
-`aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com`
+Slack notifications require configuring the `SLACK_EMAIL` environment variable. This is the email address of your Slack channel that can receive email notifications.
 
-You can customize this by:
+To set up Slack notifications:
 
-1. Setting the `SLACK_EMAIL` environment variable before running the script
-2. Using the `--slack-email` parameter with the cron script:
+1. Copy the `.env.example` file to `.env` in the project root:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit the `.env` file to set your Slack channel email:
+   ```
+   SLACK_EMAIL=your-slack-channel@slack.com
+   ```
+
+3. The cron script will automatically load this environment variable.
+
+Alternative methods (if you prefer not to use the .env file):
+
+1. Set the `SLACK_EMAIL` environment variable before running the script:
+   ```bash
+   export SLACK_EMAIL=your-channel@slack.com
+   ./scripts/granola-webhook-cron.sh
+   ```
+
+2. Use the `--slack-email` parameter with the cron script:
    ```bash
    ./scripts/granola-webhook-cron.sh --slack-email your-channel@slack.com
    ```
-3. Editing the default in the script directly
+
+**Note**: The `.env` file is ignored by git to prevent committing sensitive information.
 
 ## Manual Run
 

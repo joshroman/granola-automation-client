@@ -27,10 +27,17 @@ PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
 # Move to the project directory
 cd "$PROJECT_DIR" || exit 1
 
+# Load environment variables from .env file if it exists
+ENV_FILE="$PROJECT_DIR/.env"
+if [ -f "$ENV_FILE" ]; then
+    echo "Loading environment variables from $ENV_FILE"
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+fi
+
 # Parse arguments
 CONFIG_PATH="./webhook-config.private.json"
 ENVIRONMENT="production"  # Default to production
-SLACK_EMAIL="aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com"  # Default Slack email
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in

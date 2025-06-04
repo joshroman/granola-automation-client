@@ -76,8 +76,15 @@ function ensureStateDirectory(stateFilePath: string): void {
  * @param body Email body
  */
 async function sendSlackNotification(subject: string, body: string): Promise<void> {
-  // Default to the specified Slack email if not provided via environment
-  const slackEmail = process.env.SLACK_EMAIL || 'aaaalgmvjwhsfklmumu6j6wkc4@openmind-ai.slack.com';
+  // Use the Slack email from environment variables
+  const slackEmail = process.env.SLACK_EMAIL;
+  
+  // Check if email is configured
+  if (!slackEmail) {
+    console.error('SLACK_EMAIL environment variable not set. Notifications disabled.');
+    console.error('Set this variable to receive notifications in Slack.');
+    return;
+  }
   
   try {
     // Prepare email command - escape quotes in subject and body
