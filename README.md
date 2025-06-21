@@ -92,93 +92,187 @@ The client also provides:
 
 The system can interact with Slack, Discord, and MacOS for notifications, and send meeting information to Airtable or Google Sheets in addition to webhooks.
 
-## Client Configuration
+## Configuration
 
-The client automatically mimics the official Granola desktop app to bypass API validation. You can customize various aspects of the client if needed:
+### Template Validation
 
-```ts
-const client = new GranolaClient('your-api-token', {
-  // API configuration
-  baseUrl: 'https://api.granola.ai',
-  timeout: 10000,
-  retries: 3,
-  
-  // Client identification (defaults shown)
-  appVersion: '6.4.0',
-  clientType: 'electron',
-  clientPlatform: 'darwin',
-  clientArchitecture: 'arm64',
-  electronVersion: '33.4.5',
-  chromeVersion: '130.0.6723.191',
-  nodeVersion: '20.18.3',
-  osVersion: '15.3.1',
-  osBuild: '24D70',
->>>>>>> feature/n8n-webhooks
-});
+The system can validate that meetings have specific templates applied before processing. Configure which templates to look for:
+
+```json
+{
+  "templateValidation": {
+    "enabled": true,
+    "mode": "specific",
+    "requiredTemplateIds": ["your-template-id-here"],
+    "templateNames": {
+      "your-template-id-here": "Your Template Name"
+    }
+  }
+}
 ```
 
-## Document Panel Access
+**Template modes:**
+- `"disabled"` - Process all meetings regardless of templates
+- `"any"` - Process meetings that have any template applied
+- `"specific"` - Only process meetings with specific template IDs
 
-The `PanelClient` provides access to document panels and their structured content:
+### Webhook Configuration
 
-```ts
-import GranolaClient, { 
-  // Exported interfaces
-  PeopleResponse, 
-  FeatureFlagsResponse,
-  NotionIntegrationResponse,
-  SubscriptionsResponse,
-  ClientOpts,
-  HttpOpts,
-  
-  // Transcript processing types
-  TranscriptClient,
-  TranscriptSegmentWithSpeaker,
-  
-  // Panel and organization types
-  PanelClient,
-  DocumentPanel,
-  OrganizationDetector,
-  OrganizationConfig,
-  
-  // Webhook integration types
-  WebhookClient,
-  WebhookConfig,
-  MeetingPayload,
-  WebhookResult,
-  
-  // Generated OpenAPI schema types
-  components,
-  paths
-} from 'granola-automation-client';
+Configure webhook destinations for meeting data:
 
-// Initialize client
-const client = new PanelClient();
-
-// Get all panels for a document
-const panels = await client.getDocumentPanels('document-id');
-console.log(`Document has ${panels.length} panels`);
-
-// Get a specific panel by title
-const summaryPanel = await client.getDocumentPanelByTitle('document-id', 'Summary');
-
-// Extract structured content from a panel
-if (summaryPanel) {
-  const sections = client.extractStructuredContent(summaryPanel);
-  console.log('Introduction:', sections['Introduction']);
-  console.log('Key Decisions:', sections['Key Decisions']);
+```json
+{
+  "webhooks": [
+    {
+      "name": "n8n-automation",
+      "url": "https://your-n8n-instance.com/webhook/granola",
+      "headers": {
+        "X-Api-Key": "your-api-key",
+        "Content-Type": "application/json"
+      },
+      "enabled": true
+    }
+  ]
 }
+```
 
-// Use webhook client types
-const webhookClient = new WebhookClient();
-webhookClient.setWebhookConfig({
-  url: 'https://example.com/webhook'
-});
-const result: WebhookResult = await webhookClient.processMeeting('doc-id');
+### Airtable Configuration
 
-// Use generated schema types
-type Document = components['schemas']['Document'];
-type WorkspaceResponse = components['schemas']['WorkspaceResponse'];
+Send meeting data directly to Airtable:
+
+```json
+{
+  "airtable": {
+    "enabled": true,
+    "apiKey": "your-airtable-api-key",
+    "baseId": "your-base-id",
+    "tableName": "Meetings",
+    "fields": {
+      "title": "Meeting Title",
+      "date": "Date",
+      "transcript": "Transcript",
+      "summary": "Summary",
+      "organization": "Organization"
+    }
+  }
+}
+```
+
+### Google Sheets Configuration
+
+Configure Google Sheets as a destination:
+
+```json
+{
+  "googleSheets": {
+    "enabled": true,
+    "serviceAccountKey": "./path/to/service-account.json",
+    "spreadsheetId": "your-spreadsheet-id",
+    "sheetName": "Meetings",
+    "columns": ["Date", "Title", "Organization", "Summary", "Transcript"]
+  }
+}
+```
+
+### Slack Notifications
+
+Configure Slack notifications for processing status:
+
+```json
+{
+  "notifications": {
+    "slack": {
+      "enabled": true,
+      "webhookUrl": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "channel": "#meetings",
+      "mentionUsers": ["@admin"],
+      "notifySuccess": true,
+      "notifyErrors": true
+    }
+  }
+}
+```
+
+### Discord Notifications
+
+Configure Discord notifications:
+
+```json
+{
+  "notifications": {
+    "discord": {
+      "enabled": true,
+      "webhookUrl": "https://discord.com/api/webhooks/YOUR/DISCORD/WEBHOOK",
+      "mentionRoles": ["@Admin"],
+      "notifySuccess": true,
+      "notifyErrors": true
+    }
+  }
+}
+```
+
+### Email Notifications
+
+Configure email notifications:
+
+```json
+{
+  "notifications": {
+    "email": {
+      "enabled": true,
+      "to": ["admin@yourcompany.com"],
+      "from": "granola-automation@yourcompany.com",
+      "smtp": {
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "secure": false,
+        "auth": {
+          "user": "your-email@gmail.com",
+          "pass": "your-app-password"
+        }
+      }
+    }
+  }
+}
+```
+
+### Complete Configuration Example
+
+Create a `webhook-config.private.json` file with your full configuration:
+
+```json
+{
+  "templateValidation": {
+    "enabled": true,
+    "mode": "specific",
+    "requiredTemplateIds": ["b491d27c-1106-4ebf-97c5-d5129742945c"]
+  },
+  "webhooks": [
+    {
+      "name": "n8n-production",
+      "url": "https://n8n.yourcompany.com/webhook/granola",
+      "headers": { "X-Api-Key": "your-key" },
+      "enabled": true
+    }
+  ],
+  "airtable": {
+    "enabled": true,
+    "apiKey": "your-airtable-key",
+    "baseId": "your-base-id",
+    "tableName": "Meetings"
+  },
+  "notifications": {
+    "slack": {
+      "enabled": true,
+      "webhookUrl": "https://hooks.slack.com/services/YOUR/WEBHOOK",
+      "channel": "#automation"
+    },
+    "email": {
+      "enabled": true,
+      "to": ["admin@yourcompany.com"]
+    }
+  }
+}
 ```
 
 ## Organization Detection
