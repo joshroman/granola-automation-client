@@ -87,7 +87,7 @@ The system automatically uses environment variables if available.
 Test your Slack integration:
 
 ```typescript
-import { NotificationManager, createLogger } from 'granola-ts-client';
+import { NotificationManager, createLogger } from 'granola-automation-client';
 
 const config = {
   slack: {

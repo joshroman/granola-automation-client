@@ -1,13 +1,13 @@
-# Contributing to granola-ts-client
+# Contributing to granola-automation-client
 
-Thank you for your interest in contributing to granola-ts-client! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to granola-automation-client! This document provides guidelines and instructions for contributing.
 
 ## Development Setup
 
 This project uses [Bun](https://bun.sh/) as the JavaScript/TypeScript runtime.
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/granola-ts-client.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/granola-automation-client.git`
 3. Install dependencies: `bun install`
 4. Make your changes
 5. Run tests: `bun test`
@@ -37,4 +37,4 @@ This project uses [Bun](https://bun.sh/) as the JavaScript/TypeScript runtime.
 
 ## License
 
-By contributing to granola-ts-client, you agree that your contributions will be licensed under the project's MIT license.
+By contributing to granola-automation-client, you agree that your contributions will be licensed under the project's MIT license.

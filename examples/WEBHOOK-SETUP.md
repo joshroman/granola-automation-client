@@ -12,9 +12,9 @@ This guide shows how to set up webhook integration for processing Granola meetin
 
 1. **Install the package:**
    ```bash
-   npm install granola-ts-client
+   npm install granola-automation-client
    # or
-   bun add granola-ts-client
+   bun add granola-automation-client
    ```
 
 2. **Create a configuration file:**
@@ -45,7 +45,7 @@ This guide shows how to set up webhook integration for processing Granola meetin
 ### Basic Meeting Processing
 
 ```typescript
-import { WebhookClient } from 'granola-ts-client';
+import { WebhookClient } from 'granola-automation-client';
 
 const client = new WebhookClient();
 

@@ -1,7 +1,7 @@
 {
-  "name": "granola-ts-client",
+  "name": "granola-automation-client",
   "version": "0.7.0",
-  "description": "TypeScript client for the Granola API with automatic client validation bypass",
+  "description": "Comprehensive automation system for Granola meetings with multi-destination delivery and notifications",
   "type": "module",
   "exports": {
     ".": {

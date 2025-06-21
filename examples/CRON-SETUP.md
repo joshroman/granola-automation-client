@@ -7,7 +7,7 @@ Guide for setting up automated meeting processing using cron jobs.
 1. **Create a wrapper script** (`granola-monitor.sh`):
    ```bash
    #!/bin/bash
-   cd /path/to/your/granola-ts-client
+   cd /path/to/your/granola-automation-client
    bun run examples/webhook-monitor.ts --config webhook-config.private.json
    ```
 
@@ -42,7 +42,7 @@ Create a more robust script with logging:
 #!/bin/bash
 # granola-monitor-with-logs.sh
 
-SCRIPT_DIR="/path/to/your/granola-ts-client"
+SCRIPT_DIR="/path/to/your/granola-automation-client"
 LOG_DIR="/var/log/granola-monitor"
 LOG_FILE="$LOG_DIR/monitor-$(date +%Y-%m-%d).log"
 
@@ -78,7 +78,7 @@ For more robust service management on Linux:
    [Service]
    Type=oneshot
    ExecStart=/usr/local/bin/bun run examples/webhook-monitor.ts --config webhook-config.private.json
-   WorkingDirectory=/path/to/your/granola-ts-client
+   WorkingDirectory=/path/to/your/granola-automation-client
    User=granola
    Group=granola
 
@@ -127,7 +127,7 @@ For macOS systems:
            <string>webhook-config.private.json</string>
        </array>
        <key>WorkingDirectory</key>
-       <string>/path/to/your/granola-ts-client</string>
+       <string>/path/to/your/granola-automation-client</string>
        <key>StartInterval</key>
        <integer>900</integer>
        <key>StandardOutPath</key>

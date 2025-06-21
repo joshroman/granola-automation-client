@@ -1,6 +1,6 @@
-# Granola MacOS Meeting Assistant "API"
+# Granola Automation Client
 
-A TypeScript client for the Granola internal MacOS API
+A comprehensive automation system for Granola meetings that captures, processes, and delivers structured meeting data to your preferred destinations.
 
 This system acts as your automated post-meeting assistant, capturing Granola meetings and delivering structured notes to your preferred destination (Airtable, Google Sheets, JSON files, or custom webhooks). From there, you can use additional LLMs to extract and process action items, add to your knowledge base, etc. 
 
@@ -31,14 +31,18 @@ The system runs automatically on a schedule and:
 - **Webhook Integration**: Send meeting data to automation platforms like n8n, Airtable, or Google Sheets for custom workflows
 - **Organization Detection**: Automatically identify which organization a meeting belongs to based on context clues
 
+## Attribution
+
+This project builds upon foundational API client work and extends it into a comprehensive meeting automation system. The original TypeScript client provided the foundation for interacting with Granola's internal APIs.
+
 ## Installation
 
 ```bash
-npm install granola-ts-client
+npm install granola-automation-client
 # or
-yarn add granola-ts-client
+yarn add granola-automation-client
 # or
-bun add granola-ts-client
+bun add granola-automation-client
 ```
 
 ## Enhanced Transcript Features
@@ -146,7 +150,7 @@ import GranolaClient, {
   // Generated OpenAPI schema types
   components,
   paths
-} from 'granola-ts-client';
+} from 'granola-automation-client';
 
 // Initialize client
 const client = new PanelClient();
@@ -182,7 +186,7 @@ type WorkspaceResponse = components['schemas']['WorkspaceResponse'];
 The library includes an organization detection system that can be customized:
 
 ```typescript
-import { OrganizationDetector } from 'granola-ts-client';
+import { OrganizationDetector } from 'granola-automation-client';
 
 // Create detector with custom configuration
 const detector = OrganizationDetector.fromFile('./organization-config.json');

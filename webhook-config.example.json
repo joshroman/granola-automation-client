@@ -4,14 +4,14 @@
       "url": "https://your-n8n-instance.com/webhook-test/your-webhook-id",
       "headers": {
         "X-Api-Key": "your-api-key-here",
-        "X-Source": "granola-ts-client"
+        "X-Source": "granola-automation-client"
       }
     },
     "production": {
       "url": "https://your-n8n-instance.com/webhook/your-webhook-id",
       "headers": {
         "X-Api-Key": "your-api-key-here",
-        "X-Source": "granola-ts-client"
+        "X-Source": "granola-automation-client"
       }
     }
   },
