@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, mock, afterEach } from "bun:test";
-import { WebhookClient, OrganizationDetector } from "../src/webhook-client";
+import { WebhookClient } from "../src/webhook-client";
+import { OrganizationDetector } from "../src/organization-detector";
 import { MeetingPayload, WebhookResult } from "../src/webhook-types";
 
 // Mock data for testing

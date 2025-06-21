@@ -137,9 +137,13 @@ export class WebhookClient extends PanelClient {
     result?: WebhookResult;
     matchedPanel?: any;
   } {
-    // If no template validation config, allow processing
+    // If no template validation config, allow processing and find Josh Template for backwards compatibility
     if (!this.templateValidationConfig || !this.templateValidationConfig.enabled) {
-      return { shouldSkip: false };
+      // Look for Josh Template for backwards compatibility
+      const joshTemplatePanel = panels.find(panel => 
+        panel.template_slug === 'b491d27c-1106-4ebf-97c5-d5129742945c'
+      );
+      return { shouldSkip: false, matchedPanel: joshTemplatePanel };
     }
     
     const config = this.templateValidationConfig;
