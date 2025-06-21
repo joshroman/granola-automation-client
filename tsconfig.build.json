@@ -6,11 +6,8 @@
     "declarationMap": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
-    // Keep bundler resolution consistent with main config
-    "moduleResolution": "bundler",
-    // CRITICAL: Keep these consistent with main config for .js imports to work
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true
+    // Use bundler resolution but remove conflicting flags for declaration generation
+    "moduleResolution": "bundler"
   },
   // Explicitly include .d.ts files in compilation context
   "include": [
