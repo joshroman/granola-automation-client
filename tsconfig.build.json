@@ -6,8 +6,21 @@
     "declarationMap": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
+    // Keep bundler resolution consistent with main config
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": false,
-    "verbatimModuleSyntax": false
-  }
+    // CRITICAL: Keep these consistent with main config for .js imports to work
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true
+  },
+  // Explicitly include .d.ts files in compilation context
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "tests"
+  ]
 }

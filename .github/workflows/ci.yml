@@ -27,6 +27,16 @@ jobs:
     - name: Test
       run: bun run test:fast
     
+    - name: Debug TypeScript Module Resolution
+      run: |
+        echo "--- Verifying schema imports in source files ---"
+        grep -n "from './schema" src/*.ts || echo "No schema imports found"
+        echo "--- Checking if schema.d.ts exists ---"
+        ls -la src/schema*
+        echo "--- TypeScript version ---"
+        bun --version
+        npx tsc --version
+    
     - name: Build
       run: bun run build
     
