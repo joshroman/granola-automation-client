@@ -32,6 +32,12 @@ export interface TranscriptSegmentWithSpeaker extends TranscriptSegment {
   speaker: string;
   
   /** 
+   * Text content of the transcript segment.
+   * Required for processing operations.
+   */
+  text: string;
+  
+  /** 
    * Document ID this segment belongs to.
    * Used to track which document the segment is associated with.
    */

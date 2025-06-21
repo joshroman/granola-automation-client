@@ -291,36 +291,39 @@ export class TranscriptClient extends GranolaClient {
     // Extract creator information
     const creatorName = metadata.creator?.name || "Me";
     
-    // First pass: convert to TranscriptSegmentWithSpeaker objects
-    const segmentsWithSpeakers: TranscriptSegmentWithSpeaker[] = transcriptSegments.map(segment => {
-      // Parse timestamps
-      const startTime = new Date(segment.start_timestamp || '');
-      const endTime = new Date(segment.end_timestamp || '');
-      
-      // Check if this segment has source information
-      const source = segment.source || '';
-      let speaker = "Unknown";
-      
-      // If the source is "microphone", it's the creator speaking
-      if (source === "microphone") {
-        speaker = "Me";
-      }
-      // If the source is "system", it's potentially someone else
-      else if (source === "system") {
-        speaker = "Them";  // We'll refine this in the deduplication step
-      }
-      
-      // Add the segment with speaker info
-      return {
-        ...segment,
-        speaker,
-        document_id: segment.document_id || documentId,
-        source,
-        start_time: startTime,
-        end_time: endTime,
-        confidence: 1.0  // Initial confidence
-      };
-    });
+    // First pass: convert to TranscriptSegmentWithSpeaker objects, filtering out segments without text
+    const segmentsWithSpeakers: TranscriptSegmentWithSpeaker[] = transcriptSegments
+      .filter(segment => segment.text && segment.text.trim().length > 0)
+      .map(segment => {
+        // Parse timestamps
+        const startTime = new Date(segment.start_timestamp || '');
+        const endTime = new Date(segment.end_timestamp || '');
+        
+        // Check if this segment has source information
+        const source = segment.source || '';
+        let speaker = "Unknown";
+        
+        // If the source is "microphone", it's the creator speaking
+        if (source === "microphone") {
+          speaker = "Me";
+        }
+        // If the source is "system", it's potentially someone else
+        else if (source === "system") {
+          speaker = "Them";  // We'll refine this in the deduplication step
+        }
+        
+        // Add the segment with speaker info
+        return {
+          ...segment,
+          text: segment.text!, // We know this exists due to filter above
+          speaker,
+          document_id: segment.document_id || documentId,
+          source,
+          start_time: startTime,
+          end_time: endTime,
+          confidence: 1.0  // Initial confidence
+        };
+      });
     
     // Sort by start time
     segmentsWithSpeakers.sort((a, b) => a.start_time!.getTime() - b.start_time!.getTime());
