@@ -2,7 +2,7 @@
 import { Http } from './http';
 import type { HttpOpts } from './http';
 import { paginate } from './pagination';
-import type { components } from './schema';
+import type { components } from './schema.js';
 
 // Aliases for response schemas
 type WorkspaceResponse = components['schemas']['WorkspaceResponse'];
