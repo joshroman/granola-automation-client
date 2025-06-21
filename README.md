@@ -33,7 +33,7 @@ The system runs automatically on a schedule and:
 
 ## Attribution
 
-This project builds upon foundational API client work and extends it into a comprehensive meeting automation system. The original TypeScript client provided the foundation for interacting with Granola's internal APIs.
+This project builds upon the foundational work by [@mikedemarais](https://github.com/mikedemarais) and extends it into a comprehensive meeting automation system. The original TypeScript client from [mikedemarais/granola-ts-client](https://github.com/mikedemarais/granola-ts-client) provided the foundation for interacting with Granola's internal APIs, including authentication, API structure, and core client functionality.
 
 ## Installation
 
