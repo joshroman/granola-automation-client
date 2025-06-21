@@ -10,7 +10,12 @@
     "moduleResolution": "bundler",
     // CRITICAL: Keep these consistent with main config for .js imports to work
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    // Ensure paths mapping is inherited properly
+    "baseUrl": ".",
+    "paths": {
+      "#schema": ["src/schema.d.ts"]
+    }
   },
   // Explicitly include .d.ts files in compilation context
   "include": [
