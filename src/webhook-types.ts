@@ -6,6 +6,95 @@ type Document = components['schemas']['Document'];
 type DocumentMetadata = components['schemas']['DocumentMetadata'];
 
 /**
+ * Template validation configuration
+ */
+export interface TemplateValidationConfig {
+  /** Whether template validation is enabled */
+  enabled: boolean;
+  
+  /** Template validation mode */
+  mode: 'any' | 'specific' | 'disabled';
+  
+  /** Array of required template IDs */
+  requiredTemplateIds: string[];
+  
+  /** Mapping of template IDs to friendly names */
+  templateNames: Record<string, string>;
+}
+
+/**
+ * Notification channel configurations
+ */
+export interface NotificationConfig {
+  /** Slack notification settings */
+  slack?: {
+    enabled: boolean;
+    webhookUrl?: string;
+    channel?: string;
+    mentionUsers?: string[];
+  };
+  
+  /** Discord notification settings */
+  discord?: {
+    enabled: boolean;
+    webhookUrl?: string;
+  };
+  
+  /** Email notification settings */
+  email?: {
+    enabled: boolean;
+    smtpHost?: string;
+    smtpPort?: number;
+    username?: string;
+    password?: string;
+    from?: string;
+    to?: string[];
+  };
+  
+  /** Desktop notification settings */
+  desktop?: {
+    enabled: boolean;
+    openAppOnClick?: boolean;
+    appName?: string;
+  };
+}
+
+/**
+ * Output destination configurations
+ */
+export interface OutputConfig {
+  /** Webhook output settings */
+  webhook?: {
+    enabled: boolean;
+    url?: string;
+    headers?: Record<string, string>;
+  };
+  
+  /** Airtable output settings */
+  airtable?: {
+    enabled: boolean;
+    apiKey?: string;
+    baseId?: string;
+    tableName?: string;
+  };
+  
+  /** Google Sheets output settings */
+  googleSheets?: {
+    enabled: boolean;
+    spreadsheetId?: string;
+    sheetName?: string;
+    credentialsPath?: string;
+  };
+  
+  /** JSON file output settings */
+  jsonFile?: {
+    enabled: boolean;
+    filePath?: string;
+    appendMode?: boolean;
+  };
+}
+
+/**
  * Webhook configuration options
  */
 export interface WebhookConfig {
@@ -170,6 +259,12 @@ export interface MeetingPayload {
 export interface WebhookResult {
   /** Whether the webhook delivery was successful */
   success: boolean;
+  
+  /** Whether the meeting was skipped from processing */
+  skipped?: boolean;
+  
+  /** Reason for skipping (e.g., 'missing_josh_template', 'invalid_meeting') */
+  skipReason?: string;
   
   /** HTTP status code from the webhook endpoint */
   statusCode?: number;

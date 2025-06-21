@@ -1,0 +1,28 @@
+{
+  "meetingId": "test-meeting-123",
+  "meetingTitle": "Test Meeting for Open Source Features",
+  "meetingDate": "2025-06-20T20:22:32.006Z",
+  "metadata": {
+    "participants": [
+      {
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      {
+        "name": "Jane Smith",
+        "email": "jane@example.com"
+      }
+    ],
+    "duration": 3600,
+    "organization": {
+      "name": "Test Company",
+      "confidence": 1,
+      "signals": {}
+    },
+    "creator": {
+      "name": "John Doe",
+      "email": "john@example.com"
+    }
+  },
+  "processingTimestamp": "2025-06-20T20:22:32.006Z"
+}

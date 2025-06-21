@@ -1,159 +1,189 @@
-# Setting Up Automated Webhook Monitoring
+# Cron Job Setup
 
-This guide explains how to set up automated monitoring of Granola meetings to send data to your n8n webhook.
+Guide for setting up automated meeting processing using cron jobs.
 
-## Quick Setup with Installer
+## Basic Cron Setup
 
-We've created an installer script that automatically sets up a cron job to run the webhook monitor at 9:45 AM, 12:45 PM, 3:45 PM, and 6:45 PM daily:
-
-```bash
-./scripts/install-granola-cron.sh
-```
-
-This will:
-1. Create the logs directory if it doesn't exist
-2. Make the webhook cron script executable
-3. Install the cron job with the correct timing
-4. Verify the installation
-
-## Manual Cron Job Setup
-
-If you prefer to set up the cron job manually or need a custom schedule, the `scripts/granola-webhook-cron.sh` script is designed to be run regularly via cron to monitor for new meetings and send them to your n8n webhook.
-
-### Prerequisites
-
-1. Ensure your webhook configuration is set up properly in `webhook-config.private.json`
-2. Make sure the script is executable:
+1. **Create a wrapper script** (`granola-monitor.sh`):
    ```bash
-   chmod +x scripts/granola-webhook-cron.sh
+   #!/bin/bash
+   cd /path/to/your/granola-ts-client
+   bun run examples/webhook-monitor.ts --config webhook-config.private.json
    ```
 
-### Setting Up the Cron Job Manually (macOS/Linux)
+2. **Make it executable:**
+   ```bash
+   chmod +x granola-monitor.sh
+   ```
 
-1. Open your crontab for editing:
+3. **Add to crontab:**
    ```bash
    crontab -e
    ```
 
-2. Add a line to run the script at your desired frequency. For example, to run every 30 minutes:
+   Add one of these lines:
+
    ```bash
-   */30 * * * * cd /path/to/granola-ts-client && ./scripts/granola-webhook-cron.sh >> ./logs/webhook-cron.log 2>&1
+   # Every 15 minutes
+   */15 * * * * /path/to/granola-monitor.sh
+
+   # Every hour
+   0 * * * * /path/to/granola-monitor.sh
+
+   # Every 30 minutes during business hours (9 AM - 6 PM, weekdays)
+   */30 9-18 * * 1-5 /path/to/granola-monitor.sh
    ```
 
-   Or to run at specific times (e.g., 9:45 AM, 12:45 PM, 3:45 PM, and 6:45 PM):
-   ```bash
-   45 9,12,15,18 * * * cd /path/to/granola-ts-client && ./scripts/granola-webhook-cron.sh >> ./logs/webhook-cron.log 2>&1
-   ```
+## Advanced Setup with Logging
 
-3. Save and exit the editor.
-
-### Setting Up a Scheduled Task (Windows)
-
-1. Create a batch file (e.g., `run-webhook-monitor.bat`) with the following content:
-   ```batch
-   @echo off
-   cd C:\path\to\granola-ts-client
-   bun examples/webhook-monitor.ts --env production >> logs\webhook-cron.log 2>&1
-   ```
-
-2. Open Task Scheduler
-3. Create a new Basic Task
-4. Set the trigger to Daily, Hourly, or at system startup as needed
-5. Set the action to "Start a program" and point it to your batch file
-
-## Log Rotation (Optional)
-
-For long-running systems, you may want to set up log rotation to prevent the log file from growing too large:
-
-1. Install logrotate (if not already present)
-2. Create a configuration file `/etc/logrotate.d/granola-webhook`:
-   ```
-   /path/to/granola-ts-client/logs/webhook-cron.log {
-     rotate 7
-     daily
-     compress
-     missingok
-     notifempty
-   }
-   ```
-
-## Monitoring and Troubleshooting
-
-- Check the `logs/webhook-cron.log` file to see the output from each run
-- The script logs when it starts, what meetings it processed, and when it finishes
-- For each meeting, it logs whether the webhook delivery was successful
-- All processed meetings are tracked in `data/processed-meetings.json`
-- Slack notifications are sent automatically when errors occur
-  - First failure and every third consecutive failure will trigger a notification
-  - Recovery notifications are sent after 3+ failures when the system returns to normal
-  - Failure tracking is persistent across runs via the state file
-
-### Configuring Slack Notifications
-
-The webhook monitor supports two methods for sending notifications to Slack:
-
-#### Method 1: Slack Webhook (Recommended)
-
-Using a Slack webhook is the most reliable method:
-
-1. Copy the `.env.example` file to `.env` in the project root:
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Edit the `.env` file to set your Slack webhook URL:
-   ```
-   SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-   ```
-
-3. To create a Slack webhook URL:
-   - Go to your Slack workspace settings
-   - Navigate to **Apps & integrations**
-   - Search for "Incoming WebHooks" and add it
-   - Choose the channel for notifications
-   - Copy the webhook URL provided
-
-4. The cron script will automatically load this environment variable.
-
-Alternative methods for setting the webhook URL:
-
-1. Set the environment variable directly:
-   ```bash
-   export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-   ./scripts/granola-webhook-cron.sh
-   ```
-
-2. Use the `--slack-webhook` parameter:
-   ```bash
-   ./scripts/granola-webhook-cron.sh --slack-webhook https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-   ```
-
-#### Method 2: Email to Slack (Fallback)
-
-If you prefer using the email method (less reliable but simpler setup):
-
-1. Set the `SLACK_EMAIL` environment variable in your `.env` file:
-   ```
-   SLACK_EMAIL=your-slack-channel@slack.com
-   ```
-
-2. Or use the `--slack-email` parameter:
-   ```bash
-   ./scripts/granola-webhook-cron.sh --slack-email your-channel@slack.com
-   ```
-
-**Note**: The webhook method is preferred as it's more reliable and doesn't depend on your system's mail configuration. The `.env` file is ignored by git to prevent committing sensitive information.
-
-## Manual Run
-
-To run the script manually:
+Create a more robust script with logging:
 
 ```bash
-./scripts/granola-webhook-cron.sh
+#!/bin/bash
+# granola-monitor-with-logs.sh
+
+SCRIPT_DIR="/path/to/your/granola-ts-client"
+LOG_DIR="/var/log/granola-monitor"
+LOG_FILE="$LOG_DIR/monitor-$(date +%Y-%m-%d).log"
+
+# Create log directory if it doesn't exist
+mkdir -p "$LOG_DIR"
+
+# Change to script directory
+cd "$SCRIPT_DIR" || exit 1
+
+# Run with logging
+echo "$(date): Starting Granola monitor" >> "$LOG_FILE"
+
+if bun run examples/webhook-monitor.ts --config webhook-config.private.json >> "$LOG_FILE" 2>&1; then
+    echo "$(date): Monitor completed successfully" >> "$LOG_FILE"
+else
+    echo "$(date): Monitor failed with exit code $?" >> "$LOG_FILE"
+fi
+
+# Rotate logs (keep last 30 days)
+find "$LOG_DIR" -name "monitor-*.log" -mtime +30 -delete
 ```
 
-Or with custom parameters:
+## Using systemd (Linux)
+
+For more robust service management on Linux:
+
+1. **Create a service file** (`/etc/systemd/system/granola-monitor.service`):
+   ```ini
+   [Unit]
+   Description=Granola Meeting Monitor
+   After=network.target
+
+   [Service]
+   Type=oneshot
+   ExecStart=/usr/local/bin/bun run examples/webhook-monitor.ts --config webhook-config.private.json
+   WorkingDirectory=/path/to/your/granola-ts-client
+   User=granola
+   Group=granola
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+2. **Create a timer** (`/etc/systemd/system/granola-monitor.timer`):
+   ```ini
+   [Unit]
+   Description=Run Granola Monitor every 15 minutes
+   Requires=granola-monitor.service
+
+   [Timer]
+   OnCalendar=*:0/15
+   Persistent=true
+
+   [Install]
+   WantedBy=timers.target
+   ```
+
+3. **Enable and start:**
+   ```bash
+   sudo systemctl enable granola-monitor.timer
+   sudo systemctl start granola-monitor.timer
+   ```
+
+## Using launchd (macOS)
+
+For macOS systems:
+
+1. **Create a plist file** (`~/Library/LaunchAgents/com.granola.monitor.plist`):
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+   <plist version="1.0">
+   <dict>
+       <key>Label</key>
+       <string>com.granola.monitor</string>
+       <key>ProgramArguments</key>
+       <array>
+           <string>/usr/local/bin/bun</string>
+           <string>run</string>
+           <string>examples/webhook-monitor.ts</string>
+           <string>--config</string>
+           <string>webhook-config.private.json</string>
+       </array>
+       <key>WorkingDirectory</key>
+       <string>/path/to/your/granola-ts-client</string>
+       <key>StartInterval</key>
+       <integer>900</integer>
+       <key>StandardOutPath</key>
+       <string>/tmp/granola-monitor.out</string>
+       <key>StandardErrorPath</key>
+       <string>/tmp/granola-monitor.err</string>
+   </dict>
+   </plist>
+   ```
+
+2. **Load the service:**
+   ```bash
+   launchctl load ~/Library/LaunchAgents/com.granola.monitor.plist
+   ```
+
+## Environment Variables
+
+Set required environment variables in your cron environment:
 
 ```bash
-./scripts/granola-webhook-cron.sh --config /path/to/custom-config.json --env test
+# In crontab, add before your job:
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+NODE_ENV=production
+LOG_LEVEL=info
+
+# Then your cron job:
+*/15 * * * * /path/to/granola-monitor.sh
 ```
+
+## Monitoring the Monitor
+
+Add health checks to ensure the monitor is working:
+
+```bash
+#!/bin/bash
+# health-check.sh
+
+LAST_RUN_FILE="/tmp/granola-monitor-lastrun"
+ALERT_THRESHOLD=3600  # 1 hour in seconds
+
+if [ -f "$LAST_RUN_FILE" ]; then
+    LAST_RUN=$(cat "$LAST_RUN_FILE")
+    CURRENT_TIME=$(date +%s)
+    TIME_DIFF=$((CURRENT_TIME - LAST_RUN))
+    
+    if [ $TIME_DIFF -gt $ALERT_THRESHOLD ]; then
+        echo "ALERT: Granola monitor hasn't run in $TIME_DIFF seconds" | \
+        mail -s "Granola Monitor Alert" admin@company.com
+    fi
+fi
+```
+
+## Troubleshooting
+
+- **Permission errors**: Ensure the cron user has access to files and Granola app
+- **Path issues**: Use absolute paths in cron scripts
+- **Environment differences**: Cron runs with minimal environment; set all required variables
+- **Authentication**: Ensure Granola authentication persists across cron runs

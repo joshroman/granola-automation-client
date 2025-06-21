@@ -1,6 +1,11 @@
 // src/webhook-client.ts
 import { PanelClient } from './panel-client';
 import { TranscriptClient } from './transcript-client';
+import { 
+  OrganizationDetector, 
+  type OrganizationDetectorConfig,
+  type OrganizationConfig 
+} from './organization-detector';
 import type { 
   WebhookConfig, 
   MeetingPayload, 
@@ -8,304 +13,10 @@ import type {
   WebhookResult,
   OrganizationInfo,
   JoshTemplateContent,
-  EnhancedTranscript
+  EnhancedTranscript,
+  TemplateValidationConfig
 } from './webhook-types';
 import type { components } from './schema';
-
-// Import organization detector
-import * as fsExtra from 'fs';
-import * as pathExtra from 'path';
-
-/**
- * Configuration interface for organization detection
- */
-export interface OrganizationConfig {
-  /** Organization name */
-  name: string;
-  
-  /** Keywords to look for in meeting titles */
-  titleKeywords: string[];
-  
-  /** Email domains associated with this organization */
-  emailDomains: string[];
-  
-  /** Specific email addresses associated with this organization */
-  emailAddresses?: string[];
-  
-  /** Company names associated with this organization */
-  companyNames?: string[];
-}
-
-/**
- * Configuration for the organization detector
- */
-export interface OrganizationDetectorConfig {
-  /** List of organizations to detect */
-  organizations: OrganizationConfig[];
-  
-  /** Default organization to use if no match is found */
-  defaultOrganization?: string;
-  
-  /** Whether to use calendar data for detection (default: true) */
-  useCalendarData?: boolean;
-  
-  /** Whether to use people data for detection (default: true) */
-  usePeopleData?: boolean;
-  
-  /** Whether to use title keywords for detection (default: true) */
-  useTitleKeywords?: boolean;
-}
-
-const DEFAULT_CONFIG: OrganizationDetectorConfig = {
-  organizations: [
-    {
-      name: "Organization1",
-      titleKeywords: ["org1", "organization1"],
-      emailDomains: ["org1.com", "organization1.com"],
-      emailAddresses: ["admin@org1.com"],
-      companyNames: ["Organization One, Inc."]
-    },
-    {
-      name: "Organization2",
-      titleKeywords: ["org2", "organization2"],
-      emailDomains: ["org2.org", "organization2.org"],
-      emailAddresses: ["admin@org2.org"],
-      companyNames: ["Organization Two, LLC"]
-    }
-  ],
-  defaultOrganization: "Unknown",
-  useCalendarData: true,
-  usePeopleData: true,
-  useTitleKeywords: true
-};
-
-/**
- * Class for detecting organization affiliation of meetings
- */
-export class OrganizationDetector {
-  private config: OrganizationDetectorConfig;
-  
-  /**
-   * Create a new OrganizationDetector
-   * @param config Configuration for organization detection
-   */
-  constructor(config: OrganizationDetectorConfig = DEFAULT_CONFIG) {
-    this.config = config;
-  }
-  
-  /**
-   * Determine the organization for a meeting
-   * @param meeting Meeting data object
-   * @returns Organization name or undefined if not detected
-   */
-  public detectOrganization(meeting: any): string | undefined {
-    if (!meeting) return this.config.defaultOrganization;
-    
-    // Detection methods in priority order
-    const detectionMethods: {method: () => string | undefined, enabled: boolean}[] = [
-      // Calendar data (highest priority)
-      { 
-        method: () => this.detectFromCalendarData(meeting.google_calendar_event),
-        enabled: this.config.useCalendarData !== false 
-      },
-      // Title-based detection (second priority)
-      { 
-        method: () => this.detectFromTitle(meeting.title),
-        enabled: this.config.useTitleKeywords !== false 
-      },
-      // People data (lowest priority)
-      { 
-        method: () => this.detectFromPeopleData(meeting.people),
-        enabled: this.config.usePeopleData !== false 
-      }
-    ];
-    
-    // Try each method in order of priority
-    for (const { method, enabled } of detectionMethods) {
-      if (enabled) {
-        const org = method();
-        if (org) return org;
-      }
-    }
-    
-    // Default organization if none detected
-    return this.config.defaultOrganization;
-  }
-  
-  private detectFromTitle(title?: string): string | undefined {
-    if (!title) return undefined;
-    
-    const titleLower = title.toLowerCase();
-    
-    for (const org of this.config.organizations) {
-      for (const keyword of org.titleKeywords) {
-        if (titleLower.includes(keyword.toLowerCase())) {
-          return org.name;
-        }
-      }
-    }
-    
-    return undefined;
-  }
-  
-  private detectFromCalendarData(calendarEvent?: any): string | undefined {
-    if (!calendarEvent) return undefined;
-    
-    // Check calendar creator email
-    if (calendarEvent.creator?.email) {
-      const creatorEmail = calendarEvent.creator.email.toLowerCase();
-      
-      // Check for direct email matches
-      for (const org of this.config.organizations) {
-        if (org.emailAddresses?.some(email => email.toLowerCase() === creatorEmail)) {
-          return org.name;
-        }
-      }
-      
-      // Check email domain
-      const domain = creatorEmail.split('@')[1];
-      for (const org of this.config.organizations) {
-        if (org.emailDomains.some(d => domain.includes(d.toLowerCase()))) {
-          return org.name;
-        }
-      }
-    }
-    
-    // Check attendee domains if creator didn't give us a match
-    if (Array.isArray(calendarEvent.attendees) && calendarEvent.attendees.length > 0) {
-      const domainCounts: Record<string, number> = {};
-      
-      // Count domains by organization
-      for (const attendee of calendarEvent.attendees) {
-        if (attendee.email) {
-          const email = attendee.email.toLowerCase();
-          const domain = email.split('@')[1];
-          
-          for (const org of this.config.organizations) {
-            if (org.emailDomains.some(d => domain.includes(d.toLowerCase()))) {
-              domainCounts[org.name] = (domainCounts[org.name] || 0) + 1;
-            }
-          }
-        }
-      }
-      
-      // Find organization with most attendees
-      let maxCount = 0;
-      let primaryOrg = undefined;
-      
-      for (const [org, count] of Object.entries(domainCounts)) {
-        if (count > maxCount) {
-          maxCount = count;
-          primaryOrg = org;
-        }
-      }
-      
-      if (primaryOrg) return primaryOrg;
-    }
-    
-    return undefined;
-  }
-  
-  private detectFromPeopleData(people?: any): string | undefined {
-    if (!people) return undefined;
-    
-    // Check creator's company
-    if (people.creator?.details?.company?.name) {
-      const companyName = people.creator.details.company.name.toLowerCase();
-      
-      for (const org of this.config.organizations) {
-        if (org.companyNames?.some(name => companyName.includes(name.toLowerCase()))) {
-          return org.name;
-        }
-      }
-    }
-    
-    // Check creator email
-    if (people.creator?.email) {
-      const creatorEmail = people.creator.email.toLowerCase();
-      
-      // Check for direct email matches
-      for (const org of this.config.organizations) {
-        if (org.emailAddresses?.some(email => email.toLowerCase() === creatorEmail)) {
-          return org.name;
-        }
-      }
-      
-      // Check email domain
-      const domain = creatorEmail.split('@')[1];
-      for (const org of this.config.organizations) {
-        if (org.emailDomains.some(d => domain.includes(d.toLowerCase()))) {
-          return org.name;
-        }
-      }
-    }
-    
-    // Count attendee domains
-    if (Array.isArray(people.attendees) && people.attendees.length > 0) {
-      const domainCounts: Record<string, number> = {};
-      
-      // Count domains by organization
-      for (const attendee of people.attendees) {
-        if (attendee.email) {
-          const email = attendee.email.toLowerCase();
-          const domain = email.split('@')[1];
-          
-          for (const org of this.config.organizations) {
-            if (org.emailDomains.some(d => domain.includes(d.toLowerCase()))) {
-              domainCounts[org.name] = (domainCounts[org.name] || 0) + 1;
-            }
-          }
-        }
-      }
-      
-      // Find organization with most attendees
-      let maxCount = 0;
-      let primaryOrg = undefined;
-      
-      for (const [org, count] of Object.entries(domainCounts)) {
-        if (count > maxCount) {
-          maxCount = count;
-          primaryOrg = org;
-        }
-      }
-      
-      if (primaryOrg) return primaryOrg;
-    }
-    
-    return undefined;
-  }
-  
-  /**
-   * Load configuration from a file
-   * @param filePath Path to configuration file
-   * @returns New OrganizationDetector with loaded configuration
-   * @static
-   */
-  public static fromFile(filePath: string): OrganizationDetector {
-    try {
-      // In a Node.js environment:
-      if (typeof require === 'function') {
-        const fs = require('fs');
-        const config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-        return new OrganizationDetector(config);
-      }
-      
-      // In a browser/Bun environment:
-      if (typeof Bun !== 'undefined') {
-        const file = Bun.file(filePath);
-        const text = file.toString();
-        const config = JSON.parse(text);
-        return new OrganizationDetector(config);
-      }
-      
-      console.warn(`Could not load configuration from ${filePath}, using default config`);
-      return new OrganizationDetector();
-    } catch (error) {
-      console.error(`Error loading organization config: ${error}`);
-      return new OrganizationDetector();
-    }
-  }
-}
 
 // Type aliases for clarity
 type Document = components['schemas']['Document'];
@@ -341,7 +52,7 @@ export class WebhookClient extends PanelClient {
   private transcriptClient: TranscriptClient;
   private organizationDetector: OrganizationDetector;
   private webhookConfig: WebhookConfig | null = null;
-  private joshTemplateId: string = 'b491d27c-1106-4ebf-97c5-d5129742945c';
+  private templateValidationConfig: TemplateValidationConfig | null = null;
   
   /**
    * Create a new WebhookClient.
@@ -383,11 +94,28 @@ export class WebhookClient extends PanelClient {
   }
   
   /**
-   * Set the Josh Template ID.
+   * Set the template validation configuration.
+   * @param config The template validation configuration to use
+   */
+  public setTemplateValidationConfig(config: TemplateValidationConfig): void {
+    this.templateValidationConfig = config;
+  }
+  
+  /**
+   * Set the Josh Template ID (legacy method for backwards compatibility).
    * @param templateId The ID of the Josh Template to look for
+   * @deprecated Use setTemplateValidationConfig instead
    */
   public setJoshTemplateId(templateId: string): void {
-    this.joshTemplateId = templateId;
+    // Create a default template validation config for backwards compatibility
+    this.templateValidationConfig = {
+      enabled: true,
+      mode: 'specific',
+      requiredTemplateIds: [templateId],
+      templateNames: {
+        [templateId]: 'Josh Template'
+      }
+    };
   }
   
   /**
@@ -396,6 +124,79 @@ export class WebhookClient extends PanelClient {
    */
   public setOrganizationDetector(detector: OrganizationDetector): void {
     this.organizationDetector = detector;
+  }
+  
+  /**
+   * Validate templates for a meeting based on configuration
+   * @param panels The panels from the meeting
+   * @param meetingTitle The title of the meeting
+   * @returns Validation result with skip information and matched panel
+   */
+  private validateTemplates(panels: any[], meetingTitle: string): {
+    shouldSkip: boolean;
+    result?: WebhookResult;
+    matchedPanel?: any;
+  } {
+    // If no template validation config, allow processing
+    if (!this.templateValidationConfig || !this.templateValidationConfig.enabled) {
+      return { shouldSkip: false };
+    }
+    
+    const config = this.templateValidationConfig;
+    
+    // Find matching panels
+    const matchingPanels = panels.filter(panel => 
+      config.requiredTemplateIds.includes(panel.template_slug)
+    );
+    
+    // Check validation mode
+    switch (config.mode) {
+      case 'disabled':
+        return { shouldSkip: false };
+        
+      case 'any':
+        if (matchingPanels.length === 0) {
+          // No required templates found
+          const templateNames = config.requiredTemplateIds
+            .map(id => config.templateNames[id] || id)
+            .join(', ');
+          
+          console.log(`Skipping meeting "${meetingTitle}" - Required template(s) not found: ${templateNames}`);
+          return {
+            shouldSkip: true,
+            result: {
+              success: false,
+              skipped: true,
+              skipReason: 'missing_required_template',
+              error: `Meeting skipped: Required template(s) not applied to "${meetingTitle}". Required: ${templateNames}`
+            }
+          };
+        }
+        return { shouldSkip: false, matchedPanel: matchingPanels[0] };
+        
+      case 'specific':
+        // For backwards compatibility with Josh Template
+        if (matchingPanels.length === 0) {
+          const templateNames = config.requiredTemplateIds
+            .map(id => config.templateNames[id] || id)
+            .join(', ');
+          
+          console.log(`Skipping meeting "${meetingTitle}" - Required template(s) not found: ${templateNames}`);
+          return {
+            shouldSkip: true,
+            result: {
+              success: false,
+              skipped: true,
+              skipReason: 'missing_required_template',
+              error: `Meeting skipped: Required template(s) not applied to "${meetingTitle}". Required: ${templateNames}`
+            }
+          };
+        }
+        return { shouldSkip: false, matchedPanel: matchingPanels[0] };
+        
+      default:
+        return { shouldSkip: false };
+    }
   }
   
   /**
@@ -419,13 +220,17 @@ export class WebhookClient extends PanelClient {
       // 2. Get document panels
       const panels = await this.getDocumentPanels(documentId);
       
-      // 3. Look for Josh Template panel
-      const joshPanel = panels.find(panel => panel.template_slug === this.joshTemplateId);
+      // 3. Perform template validation if configured
+      const templateValidationResult = this.validateTemplates(panels, document.title);
+      if (templateValidationResult.shouldSkip) {
+        return templateValidationResult.result;
+      }
       
-      // 4. Extract Josh Template content
+      // 4. Extract template content (backwards compatibility for Josh Template)
       let joshTemplateContent: JoshTemplateContent | undefined;
-      if (joshPanel) {
-        const sections = this.extractStructuredContent(joshPanel);
+      const templatePanel = templateValidationResult.matchedPanel;
+      if (templatePanel) {
+        const sections = this.extractStructuredContent(templatePanel);
         joshTemplateContent = {
           introduction: sections['Introduction'],
           agendaItems: sections['Agenda Items'],

@@ -75,7 +75,8 @@ echo "Configuration: $CONFIG_PATH"
 
 # Run the webhook monitor
 echo "Running webhook monitor..."
-bun examples/webhook-monitor.ts --config "$CONFIG_PATH" --env "$ENVIRONMENT"
+# Use full path to bun to ensure it works in cron environment
+/Users/joshroman/.bun/bin/bun examples/webhook-monitor.ts --config "$CONFIG_PATH" --env "$ENVIRONMENT"
 
 # Log completion
 echo "Finished at: $(date)"

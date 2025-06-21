@@ -23,10 +23,68 @@
     "retryDelay": 1000,
     "includeTranscript": false
   },
+  "templateValidation": {
+    "enabled": true,
+    "mode": "any",
+    "requiredTemplateIds": [
+      "b491d27c-1106-4ebf-97c5-d5129742945c"
+    ],
+    "templateNames": {
+      "b491d27c-1106-4ebf-97c5-d5129742945c": "Standard Meeting Template"
+    }
+  },
+  "notifications": {
+    "slack": {
+      "enabled": true,
+      "webhookUrl": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+      "channel": "#meetings",
+      "mentionUsers": ["@admin", "@team-lead"]
+    },
+    "discord": {
+      "enabled": false,
+      "webhookUrl": "https://discord.com/api/webhooks/YOUR/DISCORD/WEBHOOK"
+    },
+    "email": {
+      "enabled": false,
+      "smtpHost": "smtp.gmail.com",
+      "smtpPort": 587,
+      "username": "your-email@gmail.com",
+      "password": "your-app-password",
+      "from": "granola@yourcompany.com",
+      "to": ["admin@yourcompany.com", "team@yourcompany.com"]
+    },
+    "desktop": {
+      "enabled": true,
+      "openAppOnClick": true,
+      "appName": "Granola"
+    }
+  },
+  "outputs": {
+    "webhook": {
+      "enabled": true
+    },
+    "airtable": {
+      "enabled": false,
+      "apiKey": "keyXXXXXXXXXXXXXX",
+      "baseId": "appXXXXXXXXXXXXXX",
+      "tableName": "Meetings"
+    },
+    "googleSheets": {
+      "enabled": false,
+      "spreadsheetId": "1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "sheetName": "Meetings",
+      "credentialsPath": "./google-service-account.json"
+    },
+    "jsonFile": {
+      "enabled": false,
+      "filePath": "./data/meetings.json",
+      "appendMode": true
+    }
+  },
   "monitoring": {
     "lookbackDays": 3,
     "maxMeetingsPerRun": 10,
-    "stateFilePath": "./processed-meetings.json"
+    "stateFilePath": "./data/processed-meetings.json"
   },
   "organizations": [
     {
@@ -44,6 +102,5 @@
       "companyNames": ["Mindshift Recovery", "Mindshift"]
     }
   ],
-  "joshTemplateId": "b491d27c-1106-4ebf-97c5-d5129742945c",
   "defaultOrganization": "Unknown"
 }

@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "generate": "openapi-typescript openapi.yaml -o src/schema.d.ts",
-    "build": "bun build src/index.ts --outdir dist && bun run build:types && bun run build:schema",
+    "build": "bun build src/index.ts --outdir dist --target node && bun run build:types && bun run build:schema",
     "build:types": "tsc -p tsconfig.build.json",
     "build:schema": "cp src/schema.d.ts dist/",
     "test": "bun test",
@@ -31,11 +31,16 @@
     "ci": "bun run lint && bun run test && bun run build",
     "prepublishOnly": "bun run ci"
   },
-  "dependencies": {},
+  "dependencies": {
+    "pino": "^9.7.0",
+    "zod": "^3.25.67"
+  },
   "devDependencies": {
     "@types/bun": "latest",
+    "@types/pino": "^7.0.5",
     "biome": "^0.3.3",
     "openapi-typescript": "^7.6.1",
+    "pino-pretty": "^13.0.0",
     "typescript": "^5.0.0"
   },
   "peerDependencies": {

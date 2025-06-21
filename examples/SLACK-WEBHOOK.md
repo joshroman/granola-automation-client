@@ -1,51 +1,112 @@
-# Setting Up Slack Webhook Notifications
+# Slack Webhook Integration
 
-If the email-based notifications aren't working reliably, you can use Slack webhooks instead, which are generally more reliable.
+Guide for setting up Slack notifications for Granola meeting processing.
 
-## Creating a Slack Webhook
+## Prerequisites
 
-1. Go to your Slack workspace settings
-2. Navigate to **Apps & integrations**
-3. Search for "Incoming WebHooks" and add it to your workspace
-4. Click "Add to Slack"
-5. Choose the channel where you want notifications to appear
-6. Click "Add Incoming WebHooks integration"
-7. Copy the Webhook URL provided (it will look like: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX)
+- Slack workspace with admin access
+- Webhook endpoint configured (see WEBHOOK-SETUP.md)
 
-## Configuring the Webhook URL
+## Setup Slack Webhook
 
-Once you have your webhook URL, add it to your `.env` file:
+1. **Create a Slack App:**
+   - Go to https://api.slack.com/apps
+   - Click "Create New App" → "From scratch"
+   - Name: "Granola Monitor"
+   - Select your workspace
 
+2. **Enable Incoming Webhooks:**
+   - Go to "Incoming Webhooks" in your app settings
+   - Turn on "Activate Incoming Webhooks"
+   - Click "Add New Webhook to Workspace"
+   - Choose the channel for notifications
+   - Copy the webhook URL
+
+3. **Configure in webhook-config.json:**
+   ```json
+   {
+     "notifications": {
+       "slack": {
+         "enabled": true,
+         "webhookUrl": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+         "channel": "#granola-alerts",
+         "mentionUsers": ["@admin", "@team-lead"]
+       }
+     }
+   }
+   ```
+
+## Notification Types
+
+The system sends notifications for:
+
+- ✅ **Successful processing**: Meeting processed and sent to webhook
+- 🟡 **Template validation failures**: Required templates missing
+- 🔴 **Processing errors**: Technical failures or API issues
+
+## Example Slack Messages
+
+### Success Notification
 ```
-# Slack webhook URL (preferred over email for reliability)
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+✅ Success: processed "Team Standup"
 
-# Only needed if webhook URL is not set
-SLACK_EMAIL=your-channel@slack.com
+Successfully processed meeting:
+- Title: Team Standup
+- ID: abc-123
+- Time: 6/20/2024, 2:30:00 PM
+- Environment: production
 ```
 
-## Testing Your Webhook
+### Template Validation
+```
+🟡 Required Template Missing
 
-You can test your webhook configuration with the provided test script:
+REQUIRED TEMPLATE MISSING
+
+Meeting requires template(s) but none were found:
+- Title: Team Standup
+- ID: abc-123
+- Environment: production
+- Required: Josh Meeting Template
+
+Please apply the required template(s) in Granola.
+```
+
+## Environment Variables
+
+For security, set webhook URL via environment variable:
 
 ```bash
-node scripts/test-slack-webhook.js "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
 ```
 
-Or, if you've configured it in your `.env` file:
+The system automatically uses environment variables if available.
 
-```bash
-node scripts/test-slack-webhook.js
+## Testing
+
+Test your Slack integration:
+
+```typescript
+import { NotificationManager, createLogger } from 'granola-ts-client';
+
+const config = {
+  slack: {
+    enabled: true,
+    webhookUrl: process.env.SLACK_WEBHOOK_URL
+  }
+};
+
+const logger = createLogger('test');
+const notificationManager = new NotificationManager(config, { logger });
+
+await notificationManager.send(
+  "Test Notification",
+  "This is a test message from Granola integration"
+);
 ```
 
-## Updating the Webhook Monitor
+## Troubleshooting
 
-To modify the webhook monitor to use Slack webhooks instead of email, you'll need to make the following changes:
-
-1. Edit `examples/webhook-monitor.ts`:
-   - Replace the `sendSlackNotification` function with one that uses the webhook URL
-   - Update error handling to use the webhook for notifications
-
-2. Update the cron scripts to use the webhook approach.
-
-These changes can be implemented as needed if the email-based approach isn't working for your environment.
+- **"Invalid webhook URL"**: Check the URL is correctly copied from Slack
+- **"Channel not found"**: Ensure the app has access to the specified channel
+- **Rate limiting**: Slack limits webhook frequency; notifications are automatically throttled

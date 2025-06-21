@@ -1,0 +1,216 @@
+Please review the architectural analysis from Gemini Pro 2.5 and provide your own independent architectural assessment. I'm particularly interested in:
+
+1. Do you agree with the assessment that webhook-monitor.ts is a monolith that needs decomposition?
+2. What are your thoughts on the proposed NotificationManager and StateManager patterns?
+3. Are there any architectural concerns or improvements Gemini missed?
+4. What would be your prioritized approach to refactoring this system?
+5. Any specific design patterns or architectural principles you'd recommend?
+
+Feel free to challenge or build upon the previous analysis. I want a comprehensive architectural review from multiple perspectives.
+
+PREVIOUS ANALYSIS FROM GEMINI PRO 2.5:
+
+Excellent, thanks for sharing this comprehensive overview and the source files. This is a great starting point for a deep architectural discussion. You've built a robust and flexible system, and your assessment of its strengths and concerns is spot on. The core design is sound, but as you've noted, some growing pains are starting to show, particularly around the `webhook-monitor.ts` orchestrator.
+
+Let's break this down. I'll focus on patterns and refactoring opportunities that align with your existing TypeScript/Node.js stack.
+
+### 1. The `webhook-monitor.ts` Monolith: Decomposing Responsibilities
+
+Your primary concern is the 890+ line `webhook-monitor.ts`, and it's the most critical issue to address. The file currently acts as an orchestrator, a notification dispatcher, a state manager, and a CLI handler. This violates the Single Responsibility Principle (SRP) and makes the system harder to test, maintain, and extend.
+
+My main recommendation is to decompose it into several focused modules/classes.
+
+#### A. Introduce a `NotificationManager`
+
+The `sendNotifications` function is a prime candidate for refactoring. It's a series of `if` statements that will need to be modified every time you add a new notification channel. This is a classic violation of the Open/Closed Principle.
+
+Let's take inspiration from your `OutputDestinationManager` and create a `NotificationManager`.
+
+**Proposed Refactoring:**
+
+1.  **Define a common interface:**
+    ```typescript
+    // src/notifications/types.ts
+    export interface NotificationChannel {
+      send(subject: string, body: string): Promise<void>;
+    }
+    ```
+
+2.  **Create concrete implementations for each channel:**
+    ```typescript
+    // src/notifications/slack-channel.ts
+    import { NotificationChannel } from './types';
+    
+    export class SlackChannel implements NotificationChannel {
+      // constructor takes slack config
+      async send(subject: string, body: string): Promise<void> {
+        // ... logic for sending to Slack webhook
+      }
+    }
+
+    // src/notifications/email-channel.ts
+    // ... similar implementation, but uses a proper library like Nodemailer 
+    // instead of `child_process.exec('mail')` for better portability and error handling.
+    ```
+
+3.  **Create the Manager:**
+    ```typescript
+    // src/notifications/notification-manager.ts
+    import { NotificationConfig } from '../webhook-types';
+    import { NotificationChannel } from './types';
+    import { SlackChannel } from './slack-channel';
+    // ... other channel imports
+
+    export class NotificationManager {
+      private channels: NotificationChannel[] = [];
+
+      constructor(config: NotificationConfig) {
+        if (config.slack?.enabled) {
+          this.channels.push(new SlackChannel(config.slack));
+        }
+        if (config.discord?.enabled) {
+          this.channels.push(new DiscordChannel(config.discord));
+        }
+        // ... and so on
+      }
+
+      async send(subject: string, body: string): Promise<void> {
+        const results = await Promise.allSettled(
+          this.channels.map(channel => channel.send(subject, body))
+        );
+        // Log any failures from Promise.allSettled
+      }
+    }
+    ```
+
+This approach makes `webhook-monitor.ts` much cleaner. It would simply instantiate `NotificationManager` and call `notificationManager.send(...)`. Adding a new channel means creating a new class, not modifying existing code.
+
+#### B. Create a dedicated `StateManager`
+
+The state management logic (`loadOrInitializeState`, `handleSkippedMeeting`, and the `fs.writeFileSync` calls) is business-critical and is currently scattered. Encapsulating it would be a huge win.
+
+**Proposed Refactoring:**
+
+Create a `StateManager` class that handles all interactions with the `processed-meetings.json` file.
+
+```typescript
+// src/state-manager.ts
+import * as fs from 'fs';
+
+// (Could reuse the state type from webhook-monitor.ts)
+interface MonitorState { /* ... */ }
+
+export class StateManager {
+  private state: MonitorState;
+  private filePath: string;
+
+  constructor(filePath: string, lookbackDays: number) {
+    this.filePath = filePath;
+    this.state = this.loadOrInitialize(lookbackDays);
+  }
+
+  private loadOrInitialize(lookbackDays: number): MonitorState {
+    // ... logic from loadOrInitializeState
+  }
+
+  public save(): void {
+    // ... logic for fs.writeFileSync
+  }
+  
+  public isProcessed(meetingId: string): boolean {
+    // ...
+  }
+
+  public addProcessedMeeting(meeting: { id: string, title: string, success: boolean }): void {
+    // ...
+  }
+
+  public shouldNotifyForSkipped(meetingId: string, meetingTitle: string, reason: string): boolean {
+    // ... logic from handleSkippedMeeting
+  }
+  
+  // Methods for failure tracking
+  public recordSuccess(): void { /* ... */ }
+  public recordFailure(): { shouldNotify: boolean, count: number } { /* ... */ }
+
+  // Getter for lastCheckTimestamp
+  public getLastCheckTimestamp(): string {
+    return this.state.lastCheckTimestamp;
+  }
+}
+```
+
+This centralizes all state logic, makes it independently testable, and simplifies the main monitor loop down to calls like `stateManager.addProcessedMeeting(...)` and `stateManager.save()`.
+
+### 2. Architectural Patterns and Other Refinements
+
+#### Configuration Validation
+The system is heavily configuration-driven, which is great. However, a malformed config file could cause unexpected runtime errors. I'd strongly recommend adding schema validation.
+
+*   **Suggestion:** Use a library like **Zod**. You can define a schema that mirrors your `WebhookMonitorConfig` interface. This gives you:
+    1.  **Type Inference:** The TypeScript type is generated from the schema.
+    2.  **Runtime Validation:** You can parse the JSON config against the schema at startup and provide clear, human-readable errors if it's invalid (e.g., "email.to must be an array of strings").
+
+#### Platform Dependency: `osascript`
+The `sendDesktopNotification` function creates a hard dependency on macOS. This significantly limits where this monitor can be run (e.g., it can't run in a standard Linux Docker container).
+
+*   **Suggestion:**
+    *   **Short-term:** Clearly document this as a macOS-only feature.
+    *   **Long-term:** Consider replacing it with a cross-platform library like `node-notifier` or abstracting it behind the `NotificationManager` so it can be conditionally included based on the OS. The current implementation using `display alert` is also blocking, which might not be ideal for a background script.
+
+#### Inefficient Data Fetching in `monitorMeetings`
+I noticed a potential inefficiency in the main loop of `monitorMeetings`:
+
+```typescript
+// inside the loop over `results`
+const documentId = Array.from(processedIds)[processedIds.size - results.length + i];
+const doc = docsMap.get(documentId);
+const meetingTitle = doc?.title || 'Unknown';
+```
+
+This logic seems fragile. The `client.processUnprocessedMeetings` method already processes each meeting. The result from that should ideally contain all the necessary information, including the title and ID.
+
+*   **Suggestion:** Refactor `WebhookClient.processMeeting` to return the `meetingTitle` and `meetingId` in its `WebhookResult`. This avoids the second `getDocuments` call and the brittle logic for matching results back to documents.
+
+#### Legacy Code and Configuration (`sendSlackNotification`)
+You've correctly identified the legacy functions. The `sendSlackNotification` function also introduces an alternative configuration method (`process.env`), which is inconsistent with the JSON-driven approach.
+
+*   **Suggestion:** Create a clear deprecation plan.
+    1.  In the short term, have the legacy function log a `console.warn` that it's deprecated and will be removed in a future version.
+    2.  Modify it to pull its config from the main `NotificationConfig` if possible, to unify configuration.
+    3.  Remove it in a future major version release.
+
+### 3. Scalability and Maintainability Concerns
+
+*   **State Management File:** The single JSON file for state is simple and effective for now. However, if this system processes thousands of meetings, reading and writing this file on every run could become a bottleneck due to its increasing size.
+    *   **Future-proofing:** If you anticipate high volume, consider replacing the JSON file with an embedded database like **SQLite**. It's still a single file, requires no separate server, and would handle querying and updates much more efficiently. This is a future consideration, not an immediate necessity.
+
+*   **Airtable Integration:** The `sendToAirtable` method in `OutputDestinationManager` has hardcoded field names (e.g., `'Meeting ID'`, `'Title'`). This is brittle. If someone renames a column in Airtable, the integration will break silently.
+    *   **Suggestion:** Make the field mapping configurable in `webhook-config.json`.
+        ```json
+        "airtable": {
+          "enabled": true,
+          // ... other config
+          "fieldMapping": {
+            "meetingId": "Meeting ID",
+            "meetingTitle": "Title",
+            // ... etc
+          }
+        }
+        ```
+
+### Summary of Recommendations
+
+1.  **Decompose `webhook-monitor.ts`:** This is the highest priority.
+    *   Create a `NotificationManager` using a strategy-like pattern.
+    *   Create a `StateManager` to encapsulate all `fs` operations and state logic.
+    *   Isolate CLI parsing logic.
+2.  **Add Configuration Validation:** Use `Zod` to validate `webhook-config.json` on startup.
+3.  **Address Platform Dependency:** Decouple the macOS-specific desktop notifications.
+4.  **Refine Data Flow:** Modify `WebhookClient` to return necessary metadata (`title`, `id`) to avoid redundant API calls in the monitor.
+5.  **Plan for Legacy Code Removal:** Unify configuration away from `process.env` and phase out deprecated functions.
+6.  **Improve Destination Brittleness:** Make the Airtable field mapping configurable.
+
+This is a fantastic project with a very solid base. These refactoring steps are natural evolutions for a growing system and will significantly improve its long-term health and your ability to extend it.
+
+What are your initial thoughts on tackling the `webhook-monitor.ts` monolith first? I believe that will provide the biggest immediate improvement in clarity and maintainability.

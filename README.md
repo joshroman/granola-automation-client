@@ -1,20 +1,34 @@
-# Granola TypeScript Client
+# Granola MacOS Meeting Assistant "API"
 
-A TypeScript client for the Granola API with enhanced features.
+A TypeScript client for the Granola internal MacOS API
+
+This system acts as your automated post-meeting assistant, capturing Granola meetings and delivering structured notes to your preferred destination (Airtable, Google Sheets, JSON files, or custom webhooks). From there, you can use additional LLMs to extract and process action items, add to your knowledge base, etc. 
+
+### Key Benefits
+
+- **Save Time**: Eliminate manual note transfer and organization
+- **Never Miss Critical Information**: All meeting details are systematically captured
+- **Consistent Organization**: Every meeting follows the same structure
+- **Searchable Knowledge Base**: Find any meeting detail through your chosen destination
+- **Reliable Operation**: System is designed to be bulletproof with Slack and/or desktop alerts if anything requires attention 
+
+### Automated Processing
+
+The system runs automatically on a schedule and:
+1. Connects to your Granola account several times daily
+2. Identifies any new meetings since the last check
+3. Extracts meeting summaries, structured notes, and enhanced transcripts
+4. Identifies which organization the meeting belongs to
+5. Sends the complete package to your configured destination
+6. Tracks all processed meetings to avoid duplication
+7. Sends notifications about successful processing
 
 ## Features
 
-- **Basic API Client:** Full TypeScript client for the Granola API
-- **Automatic Authentication:** Extracts tokens from the local Granola app installation
-- **Enhanced Transcripts:** Speaker identification, deduplication, and improved formatting
-- **Document Panels:** Access and extract structured content from meeting summaries
-- **Organization Detection:** Determine which organization a meeting belongs to
-
-The client provides powerful capabilities for working with Granola meeting data:
-
-- **Enhanced Transcript Processing**: Extract transcripts with automatic speaker identification and improved formatting
-- **AI Meeting Summaries**: Access AI-generated meeting summaries and structured panel content
-- **Webhook Integration**: Send meeting data to automation platforms like n8n for custom workflows
+- **Basic API Client:** Full TypeScript client for the MacOS Granola API w/ automatic authentication
+- **Local Meeting Summary Access**: Get meeting summaries and custom template ("panel") content
+- **Enhanced Transcript Processing**: Extract transcripts with automatic speaker identification and improved formatting that is not fully available via the internal API
+- **Webhook Integration**: Send meeting data to automation platforms like n8n, Airtable, or Google Sheets for custom workflows
 - **Organization Detection**: Automatically identify which organization a meeting belongs to based on context clues
 
 ## Installation
@@ -27,57 +41,13 @@ yarn add granola-ts-client
 bun add granola-ts-client
 ```
 
-## Basic Usage
-
-```typescript
-import { GranolaClient } from 'granola-ts-client';
-
-// Initialize with automatic token retrieval from local Granola app
-const client = new GranolaClient();
-
-// Get workspaces
-const workspaces = await client.getWorkspaces();
-console.log(`You have ${workspaces.workspaces.length} workspaces`);
-
-// Get documents
-const documents = await client.getDocuments({ limit: 20 });
-console.log(`Found ${documents.docs.length} documents`);
-
-// Get transcript for a document
-const transcript = await client.getDocumentTranscript('document-id');
-console.log(`Transcript has ${transcript.length} segments`);
-```
-
 ## Enhanced Transcript Features
 
-The `TranscriptClient` extends the base client with speaker identification and transcript processing:
-
-```typescript
-import { TranscriptClient } from 'granola-ts-client';
-
-// Initialize client
-const client = new TranscriptClient();
-
-// Get transcript with speaker identification
-const transcriptWithSpeakers = await client.getDocumentTranscriptWithSpeakers('document-id');
-
-// Export transcript with speaker formatting to markdown
-await client.exportTranscriptMarkdown(
-  'document-id',
-  'output.md',
-  {
-    deduplicate: true,  // deduplicate segments (default: true)
-    similarityThreshold: 0.68,  // similarity threshold (default: 0.68)
-    timeWindowSeconds: 4.5,  // time window seconds (default: 4.5)
-    groupBySpeaker: true,  // group by speaker (default: true)
-    includeTimestamps: true  // include timestamps (default: false)
-  }
-);
-```
+The `TranscriptClient` extends the base client with speaker identification and transcript processing which is not fully available via the internal API (and cleans up some challenging formatting.)
 
 The enhanced client provides these key features:
 
-1. **Speaker Identification**: Automatically identifies speakers based on audio source (microphone vs. system).
+1. **Speaker Identification**: Automatically identifies speakers based on audio source (microphone vs. system). 
 2. **Transcript Deduplication**: Removes duplicate speech segments using text similarity detection.
 3. **Dialog Coherence**: Applies conversation patterns to improve speaker assignment.
 4. **Markdown Export**: Formats transcripts grouped by speaker instead of labeling each line.
@@ -99,42 +69,13 @@ It's going great. I've made significant progress on the API integration.
 
 ### Webhook Integration
 
-The client includes a `WebhookClient` class for sending meeting data to external systems like n8n:
-
-```ts
-import { WebhookClient } from 'granola-ts-client';
-
-// Initialize the webhook client
-const client = new WebhookClient();
-
-// Configure the webhook endpoint
-client.setWebhookConfig({
-  url: 'https://n8n.example.com/webhook/granola',
-  headers: { 'X-Api-Key': 'your-api-key' },
-  includeTranscript: true,
-  maxRetries: 3,
-  retryStrategy: 'exponential',
-  retryDelay: 1000
-});
-
-// Process a specific meeting and send to webhook
-const result = await client.processMeeting('document-id');
-console.log(`Webhook delivery: ${result.success ? 'Success' : 'Failed'}`);
-
-// Process all unprocessed meetings since a date
-const processedIds = new Set(['already-processed-id-1', 'already-processed-id-2']);
-const results = await client.processUnprocessedMeetings(
-  new Date('2025-06-01'),  // Only process meetings after this date
-  processedIds,           // Skip already processed meetings
-  10                      // Process up to 10 meetings
-);
-```
+The client includes a `WebhookClient` class for sending meeting data to external systems like n8n.
 
 The webhook client sends detailed meeting information:
 
 1. **Meeting Metadata**: Title, date, participants, duration, organization
-2. **Josh Template Content**: Introduction, agenda, decisions, action items, etc.
-3. **Enhanced Transcript**: Speaker-identified transcript in text and markdown formats
+2. **Custom Template Content**: e.g. Introduction, agenda, decisions, action items, etc.
+3. **Full Transcript**: Speaker-identified transcript in text and markdown formats
 
 The client also provides:
 
@@ -145,28 +86,7 @@ The client also provides:
 
 ### Other APIs
 
-```ts
-// Get panel templates
-const templates = await client.getPanelTemplates();
-
-// Get people data
-const people = await client.getPeople();
-
-// Get feature flags
-const featureFlags = await client.getFeatureFlags();
-
-// Get Notion integration details
-const notionIntegration = await client.getNotionIntegration();
-
-// Get subscription information
-const subscriptions = await client.getSubscriptions();
-
-// Refresh Google Calendar events
-await client.refreshGoogleEvents();
-
-// Check for application updates
-const updateInfo = await client.checkForUpdate();
-```
+The system can interact with Slack, Discord, and MacOS for notifications, and send meeting information to Airtable or Google Sheets in addition to webhooks.
 
 ## Client Configuration
 
@@ -311,6 +231,55 @@ bun test
 
 # Build
 bun run build
+```
+
+## Troubleshooting
+
+### Common Issues
+
+| Error Message | Likely Cause | Solution |
+|---------------|--------------|----------|
+| "No webhook configuration set" | Missing webhook config | Check webhook-config.private.json file exists and contains valid URL |
+| "Error processing meeting" | General processing failure | Check logs for specific error details |
+| "HTTP error: 401" | Authentication failure | Check API token validity and refresh if needed |
+| "HTTP error: 429" | Rate limiting | Reduce frequency of requests or implement additional backoff |
+| "Webhook delivery failed" | Connectivity issue | Verify webhook URL and destination server status |
+
+### Authentication Issues
+
+If you encounter 401 Unauthorized errors:
+1. Verify token extraction is working: `bun scripts/test-api-real.js`
+2. Check local Granola application installation
+3. For persistent issues, manually set an API token in .env file
+
+### Recovery Procedures
+
+If specific meetings need to be processed immediately:
+```bash
+# Process specific meeting
+bun examples/webhook-monitor.ts --meeting <meeting-id>
+
+# Process with different environment
+bun examples/webhook-monitor.ts --meeting <meeting-id> --env test
+```
+
+If the state file becomes corrupted or needs reset:
+```bash
+# Backup current state
+cp processed-meetings.json processed-meetings.backup.json
+
+# Create new state file with specific lookback
+cat > processed-meetings.json << EOF
+{
+  "lastCheckTimestamp": "$(date -v-7d -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "processedMeetings": [],
+  "failureTracking": {
+    "consecutiveFailures": 0,
+    "lastNotificationTime": null,
+    "lastSuccessTime": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  }
+}
+EOF
 ```
 
 ## License
