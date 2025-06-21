@@ -26,9 +26,13 @@
     "build:types": "tsc -p tsconfig.build.json",
     "build:schema": "cp src/schema.d.ts dist/",
     "test": "bun test",
+    "test:unit": "bun test tests/ --ignore tests/canary.test.ts",
+    "test:canary": "CANARY_TESTS=true bun test tests/canary.test.ts",
+    "test:fast": "bun run test:unit",
+    "test:all": "bun run test:fast && bun run test:canary",
     "format": "biome format . --write",
     "lint": "biome check .",
-    "ci": "bun run lint && bun run test && bun run build",
+    "ci": "bun run lint && bun run test:fast && bun run build",
     "prepublishOnly": "bun run ci"
   },
   "dependencies": {

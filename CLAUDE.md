@@ -25,6 +25,7 @@
 - Follow the established TypeScript configuration without modifications
 - Maintain 80%+ test coverage for all new code
 - Use async/await syntax rather than Promises with then/catch
+- Always show failing tests. It is more helpful to see broken tests than to force-pass or use mock data to show passing tests.
 
 ### TypeScript and Type Exports
 
@@ -43,3 +44,9 @@
   - Modifying multiple files simultaneously
   - Switching between features/tasks
 - Branch naming convention: `feature/short-description` or `fix/issue-reference`
+- The primary branch is `main`, never `master`
+
+### Misc
+
+- Never use emojis in any file
+- Avoid any use of the word "Josh" in the code, commit messages, etc.
