@@ -1,5 +1,5 @@
 // src/webhook-types.ts
-import type { components } from './schema';
+import type { components } from './schema.d.ts';
 import type { TranscriptSegmentWithSpeaker } from './transcript-types';
 
 type Document = components['schemas']['Document'];

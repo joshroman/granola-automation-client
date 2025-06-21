@@ -16,7 +16,7 @@ import type {
   EnhancedTranscript,
   TemplateValidationConfig
 } from './webhook-types';
-import type { components } from './schema';
+import type { components } from './schema.d.ts';
 
 // Type aliases for clarity
 type Document = components['schemas']['Document'];

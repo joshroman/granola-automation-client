@@ -29,4 +29,4 @@ export { createLogger, getLogger, rootLogger } from './utils/logger';
 export { setupErrorHandlers } from './utils/error-handler';
 
 // Re-export schema types
-export type { components, paths } from './schema';
+export type { components, paths } from './schema.d.ts';
