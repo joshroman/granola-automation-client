@@ -1,5 +1,5 @@
 // src/transcript-types.ts
-import type { components } from './schema.js';
+import type { components } from './schema';
 type TranscriptSegment = components['schemas']['TranscriptSegment'];
 
 /**
