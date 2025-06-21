@@ -14,11 +14,6 @@
     "verbatimModuleSyntax": true,
     "noEmit": true,
 
-    // Path mapping for OpenAPI schema types
-    "baseUrl": ".",
-    "paths": {
-      "#schema": ["src/schema.d.ts"]
-    },
 
     // Best practices
     "strict": true,

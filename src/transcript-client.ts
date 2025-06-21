@@ -1,6 +1,6 @@
 // src/transcript-client.ts
 import GranolaClient from './client';
-import type { components } from '#schema';
+import type { components } from './schema.js';
 import type { TranscriptSegmentWithSpeaker } from './transcript-types';
 
 type TranscriptSegment = components['schemas']['TranscriptSegment'];
